@@ -22,7 +22,7 @@ export async function StoreShell({ children }: { children: ReactNode }) {
       <Suspense fallback={<div className="h-[148px] bg-white" />}>
         <StoreHeader categories={categories.map((c) => ({ name: c.name, slug: c.slug, products: c.products }))} announcement={cfg.announcement} />
       </Suspense>
-      <main className="flex-1 animate-page-in">{children}</main>
+      <main className="flex-1">{children}</main>
 
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-6 lg:grid-cols-4">
@@ -35,10 +35,10 @@ export async function StoreShell({ children }: { children: ReactNode }) {
             const Icon = I as typeof CashIcon;
             return (
               <div key={t as string} className="flex items-center gap-3">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-fb-50 text-fb-600"><Icon className="size-5" /></span>
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-fb-50 text-fb-700"><Icon className="size-5" /></span>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-ink">{t as string}</p>
-                  <p className="truncate text-xs text-slate-500">{s as string}</p>
+                  <p className="truncate text-xs text-slate-600">{s as string}</p>
                 </div>
               </div>
             );
@@ -51,7 +51,7 @@ export async function StoreShell({ children }: { children: ReactNode }) {
           <div className="col-span-2 md:col-span-1">
             <span className="inline-block rounded-lg bg-white px-3 py-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" className="h-7 w-auto" />
+              <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" width={729} height={121} className="h-7 w-auto" />
             </span>
             <p className="mt-4 max-w-xs text-sm leading-relaxed">Your one-stop shop for authentic baby food and baby care — delivered across Bangladesh.</p>
             {cfg.facebookUrl && <a href={cfg.facebookUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-medium text-fb-300 hover:text-white">Follow us on Facebook →</a>}
@@ -93,7 +93,7 @@ export async function StoreShell({ children }: { children: ReactNode }) {
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs sm:flex-row">
             <p>© <Year /> Fatehabd. All rights reserved.</p>
-            <p className="flex items-center gap-2">We accept <span className="rounded bg-white/10 px-1.5 py-0.5">COD</span><span className="rounded bg-[#e2136e]/80 px-1.5 py-0.5 text-white">bKash</span><span className="rounded bg-[#f6921e]/80 px-1.5 py-0.5 text-white">Nagad</span><span className="rounded bg-[#8c3494]/80 px-1.5 py-0.5 text-white">Rocket</span></p>
+            <p className="flex items-center gap-2">We accept <span className="rounded bg-white/10 px-1.5 py-0.5">COD</span><span className="rounded bg-[#d1105f] px-1.5 py-0.5 text-white">bKash</span><span className="rounded bg-[#f6921e] px-1.5 py-0.5 text-ink">Nagad</span><span className="rounded bg-[#8c3494] px-1.5 py-0.5 text-white">Rocket</span></p>
           </div>
         </div>
       </footer>

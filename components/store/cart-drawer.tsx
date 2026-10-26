@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { closeDrawer, removeFromCart, setQty, useCart, useDrawer } from "./cart-store";
 import { bdt } from "@/lib/store-config";
+import { sized } from "@/lib/media";
 import { BagIcon, MinusIcon, PlusIcon, TrashIcon, TruckIcon, XIcon } from "../icons";
 
 export function CartDrawer({ freeDeliveryOver }: { freeDeliveryOver: number }) {
@@ -20,13 +21,13 @@ export function CartDrawer({ freeDeliveryOver }: { freeDeliveryOver: number }) {
   }, [open]);
 
   return (
-    <div className={`fixed inset-0 z-[60] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-[60] ${open ? "" : "pointer-events-none"}`} inert={!open}>
       <div onClick={closeDrawer} className={`absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0"}`} />
       <aside role="dialog" aria-modal="true" aria-label="Shopping cart"
         className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${open ? "translate-x-0" : "translate-x-full"}`}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <p className="text-lg font-semibold text-ink">Your cart <span className="text-sm font-normal text-slate-400">({count})</span></p>
-          <button type="button" onClick={closeDrawer} className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Close cart">
+          <button type="button" onClick={closeDrawer} className="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100" aria-label="Close cart">
             <XIcon className="size-5" />
           </button>
         </div>
@@ -34,7 +35,7 @@ export function CartDrawer({ freeDeliveryOver }: { freeDeliveryOver: number }) {
         {freeDeliveryOver > 0 && items.length > 0 && (
           <div className="border-b border-slate-100 px-5 py-3 text-sm">
             <p className="flex items-center gap-2 text-ink-soft">
-              <TruckIcon className="size-4 text-fb-600" />
+              <TruckIcon className="size-4 text-fb-700" />
               {left > 0 ? <>Add <strong className="text-ink">{bdt(left)}</strong> more for free delivery</> : <strong className="text-fb-700">You&apos;ve unlocked free delivery!</strong>}
             </p>
             <div className="mt-2 h-1.5 rounded-full bg-slate-100">
@@ -46,9 +47,9 @@ export function CartDrawer({ freeDeliveryOver }: { freeDeliveryOver: number }) {
         {items.length === 0 ? (
           <div className="grid flex-1 place-items-center p-8 text-center">
             <div>
-              <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-fb-50 text-fb-600"><BagIcon className="size-8" /></span>
+              <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-fb-50 text-fb-700"><BagIcon className="size-8" /></span>
               <p className="mt-4 font-semibold text-ink">Your cart is empty</p>
-              <p className="mt-1 text-sm text-slate-500">Find something your little one will love.</p>
+              <p className="mt-1 text-sm text-slate-600">Find something your little one will love.</p>
               <Link href="/shop" onClick={closeDrawer} className="mt-5 inline-flex h-11 items-center rounded-xl bg-fb-500 px-6 font-semibold text-white hover:bg-fb-600">Start shopping</Link>
             </div>
           </div>
@@ -59,7 +60,7 @@ export function CartDrawer({ freeDeliveryOver }: { freeDeliveryOver: number }) {
                 <li key={i.id} className="flex gap-3 py-4">
                   <Link href={`/products/${i.slug}`} onClick={closeDrawer} className="shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={i.image} alt="" className="size-20 rounded-xl bg-slate-50 object-contain p-1.5" />
+                    <img src={sized(i.image, 192)} alt="" width={80} height={80} loading="lazy" className="size-20 rounded-xl bg-slate-50 object-contain p-1.5" />
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col">
                     <Link href={`/products/${i.slug}`} onClick={closeDrawer} className="line-clamp-2 text-sm font-medium text-ink hover:text-fb-700">{i.name}</Link>

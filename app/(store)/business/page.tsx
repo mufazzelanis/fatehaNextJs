@@ -42,13 +42,13 @@ function SignIn() {
         <ul className="mt-6 space-y-3 text-sm text-ink-soft">
           {[[TargetIcon, "Monthly targets with live progress"], [UsersIcon, "Assign targets to the dealers under you"], [TruckIcon, "See every order placed in your area"]].map(([Icon, t]) => {
             const I = Icon as typeof TargetIcon;
-            return <li key={t as string} className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-white text-fb-600 ring-1 ring-slate-200"><I className="size-5" /></span>{t as string}</li>;
+            return <li key={t as string} className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-white text-fb-700 ring-1 ring-slate-200"><I className="size-5" /></span>{t as string}</li>;
           })}
         </ul>
       </div>
       <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-900/[0.04] sm:p-8">
         <h2 className="text-xl font-bold text-ink">Business login</h2>
-        <p className="mb-6 mt-1 text-sm text-slate-500">Sign in with the mobile number you registered with.</p>
+        <p className="mb-6 mt-1 text-sm text-slate-600">Sign in with the mobile number you registered with.</p>
         <DealerLoginForm />
         <p className="mt-6 border-t border-slate-100 pt-5 text-center text-sm text-slate-600">
           Not a dealer yet? <Link href="/business/register" className="font-semibold text-fb-700 hover:underline">Apply for a dealership</Link>
@@ -76,13 +76,13 @@ function StatusScreen({ me, justApplied }: { me: Dealer; justApplied: boolean })
         {me.admin_note && me.status !== "pending" && <p className="mt-4 rounded-xl bg-white/70 px-4 py-3 text-sm"><strong>Note from FatehaBD:</strong> {me.admin_note}</p>}
       </div>
       <dl className="mt-6 grid gap-3 rounded-3xl border border-slate-200/80 bg-white p-6 text-sm sm:grid-cols-2">
-        <div><dt className="text-slate-500">Name</dt><dd className="font-semibold text-ink">{me.name}</dd></div>
-        <div><dt className="text-slate-500">Applied for</dt><dd className="font-semibold text-ink">{me.applied_level ? LEVEL_LABEL[me.applied_level] : "—"}</dd></div>
-        <div><dt className="text-slate-500">Area</dt><dd className="font-semibold text-ink">{areaName(me)}</dd></div>
-        <div><dt className="text-slate-500">Mobile</dt><dd className="font-semibold text-ink">{me.phone}</dd></div>
+        <div><dt className="text-slate-600">Name</dt><dd className="font-semibold text-ink">{me.name}</dd></div>
+        <div><dt className="text-slate-600">Applied for</dt><dd className="font-semibold text-ink">{me.applied_level ? LEVEL_LABEL[me.applied_level] : "—"}</dd></div>
+        <div><dt className="text-slate-600">Area</dt><dd className="font-semibold text-ink">{areaName(me)}</dd></div>
+        <div><dt className="text-slate-600">Mobile</dt><dd className="font-semibold text-ink">{me.phone}</dd></div>
       </dl>
       <form action={dealerLogout} className="mt-6 text-center">
-        <button className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-ink"><LogoutIcon className="size-4" /> Log out</button>
+        <button className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-ink"><LogoutIcon className="size-4" /> Log out</button>
       </form>
     </div>
   );
@@ -158,14 +158,14 @@ async function Dashboard({ me, sp }: { me: Dealer & { level: NonNullable<Dealer[
         <section className="rounded-3xl border border-slate-200/80 bg-white p-5 md:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-slate-500">My target — {monthLabel(month)}</p>
+              <p className="text-sm font-medium text-slate-600">My target — {monthLabel(month)}</p>
               <p className="mt-1 text-3xl font-bold text-ink">{target ? bdt(target.amount) : <span className="text-xl text-slate-400">Not set yet</span>}</p>
             </div>
-            <span className="grid size-11 place-items-center rounded-2xl bg-fb-50 text-fb-600"><TargetIcon className="size-6" /></span>
+            <span className="grid size-11 place-items-center rounded-2xl bg-fb-50 text-fb-700"><TargetIcon className="size-6" /></span>
           </div>
           <div className="mt-5">
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-slate-500">Achieved <strong className="text-lg text-ink">{bdt(sales.amount)}</strong></span>
+              <span className="text-slate-600">Achieved <strong className="text-lg text-ink">{bdt(sales.amount)}</strong></span>
               {pct != null && <span className="font-bold text-fb-700">{pct}%</span>}
             </div>
             <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
@@ -184,9 +184,9 @@ async function Dashboard({ me, sp }: { me: Dealer & { level: NonNullable<Dealer[
           </div>
         </section>
         <section className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-5">
-          <p className="text-sm font-medium text-slate-500">Next month — {monthLabel(nextMonth)}</p>
+          <p className="text-sm font-medium text-slate-600">Next month — {monthLabel(nextMonth)}</p>
           <p className="mt-1 text-2xl font-bold text-ink">{nextTarget ? bdt(nextTarget.amount) : <span className="text-lg text-slate-400">Not set yet</span>}</p>
-          <p className="mt-auto pt-4 text-sm text-slate-500">For sales &amp; settlement details, please contact the admin.</p>
+          <p className="mt-auto pt-4 text-sm text-slate-600">For sales &amp; settlement details, please contact the admin.</p>
         </section>
       </div>
 
@@ -196,18 +196,18 @@ async function Dashboard({ me, sp }: { me: Dealer & { level: NonNullable<Dealer[
           <div className="flex flex-wrap items-end justify-between gap-3 p-5 pb-4">
             <div>
               <h2 className="text-lg font-bold text-ink">{childLabel}s in {areaTitle}</h2>
-              <p className="mt-0.5 text-sm text-slate-500">
+              <p className="mt-0.5 text-sm text-slate-600">
                 {covered} of {children.length} {childLabel.toLowerCase()}s have a dealer
                 {me.level === "district" && " · click a thana to see its unions"}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 px-4 py-2.5 text-sm">
-              <span className="text-slate-500">Targets for the month: </span>
+              <span className="text-slate-600">Targets for the month: </span>
               <strong className="text-ink">assigned {bdt(assigned)}</strong>
-              {target && <span className={assigned > target.amount ? "text-rose-600" : "text-slate-500"}> of {bdt(target.amount)}</span>}
+              {target && <span className={assigned > target.amount ? "text-rose-600" : "text-slate-600"}> of {bdt(target.amount)}</span>}
             </div>
           </div>
-          {!editable && <p className="mx-5 mb-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">Past month — targets are read-only.</p>}
+          {!editable && <p className="mx-5 mb-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">Past month — targets are read-only.</p>}
           <SubAreaTable rows={children} childLabel={childLabel} month={month} editable={editable} showSubDealers={me.level === "district"}
             drillBase={me.level === "district" ? `/business?month=${month}&thana=` : undefined} />
           {me.level === "district" && (
@@ -220,9 +220,9 @@ async function Dashboard({ me, sp }: { me: Dealer & { level: NonNullable<Dealer[
         <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-4">
             <div>
-              <Link href={`/business?month=${month}`} scroll={false} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-ink"><ChevronLeftIcon className="size-3.5" /> Close</Link>
+              <Link href={`/business?month=${month}`} scroll={false} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-ink"><ChevronLeftIcon className="size-3.5" /> Close</Link>
               <h2 className="text-lg font-bold text-ink">Unions in {drillName}</h2>
-              <p className="mt-0.5 text-sm text-slate-500">Union dealer targets are set by the thana dealer.</p>
+              <p className="mt-0.5 text-sm text-slate-600">Union dealer targets are set by the thana dealer.</p>
             </div>
           </div>
           <SubAreaTable rows={drillRows} childLabel="Union" month={month} editable={false} showSubDealers={false} />
@@ -233,14 +233,14 @@ async function Dashboard({ me, sp }: { me: Dealer & { level: NonNullable<Dealer[
       <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
         <h2 className="p-5 pb-3 text-lg font-bold text-ink">Latest orders in your area</h2>
         {recent.length === 0 ? (
-          <p className="px-5 pb-6 text-sm text-slate-500">No store orders from your area yet.</p>
+          <p className="px-5 pb-6 text-sm text-slate-600">No store orders from your area yet.</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {recent.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                 <div className="min-w-0">
                   <p className="font-medium text-ink">#{o.order_no} · {o.customer_name.split(" ")[0]} <span className="text-xs text-slate-400">{maskPhone(o.phone)}</span></p>
-                  <p className="truncate text-xs text-slate-500">{[o.union_name, o.thana].filter(Boolean).join(", ")} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</p>
+                  <p className="truncate text-xs text-slate-600">{[o.union_name, o.thana].filter(Boolean).join(", ")} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-semibold text-ink">{bdt(Number(o.total))}</p>
@@ -264,7 +264,7 @@ function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-slate-50 px-2 py-3">
       <p className="text-base font-bold text-ink sm:text-lg">{value}</p>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-600">{label}</p>
     </div>
   );
 }

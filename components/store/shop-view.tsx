@@ -34,7 +34,7 @@ export async function ShopView({ params, categorySlug }: { params: Params; categ
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-5 sm:py-8">
-      <nav className="mb-4 flex items-center gap-1.5 text-xs text-slate-500" aria-label="Breadcrumb">
+      <nav className="mb-4 flex items-center gap-1.5 text-xs text-slate-600" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-fb-700">Home</Link><span>/</span>
         <Link href="/shop" className="hover:text-fb-700">Shop</Link>
         {category && <><span>/</span><span className="text-ink">{category.name}</span></>}
@@ -43,7 +43,7 @@ export async function ShopView({ params, categorySlug }: { params: Params; categ
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">{result.total} product{result.total === 1 ? "" : "s"}</p>
+          <p className="mt-1 text-sm text-slate-600">{result.total} product{result.total === 1 ? "" : "s"}</p>
         </div>
         <div className="flex items-center gap-2">
           <ShopFilters mobile base={base} categories={categories.map((c) => ({ name: c.name, slug: c.slug, n: c.products }))} current={query} brands={result.brands} range={result.priceRange} active={active} />
@@ -60,9 +60,9 @@ export async function ShopView({ params, categorySlug }: { params: Params; categ
         <div className="min-w-0">
           {result.products.length === 0 ? (
             <div className="grid place-items-center rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-              <span className="grid size-14 place-items-center rounded-2xl bg-fb-50 text-fb-600"><SearchIcon className="size-7" /></span>
+              <span className="grid size-14 place-items-center rounded-2xl bg-fb-50 text-fb-700"><SearchIcon className="size-7" /></span>
               <p className="mt-4 font-semibold text-ink">No products match</p>
-              <p className="mt-1 text-sm text-slate-500">Try a different search or clear the filters.</p>
+              <p className="mt-1 text-sm text-slate-600">Try a different search or clear the filters.</p>
               <Link href={base} className="mt-5 inline-flex h-11 items-center rounded-xl bg-fb-500 px-5 font-semibold text-white hover:bg-fb-600">Clear filters</Link>
             </div>
           ) : (

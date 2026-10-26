@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "25mb",
     },
   },
+  // Title/description/Open Graph always go in <head> (not streamed later in <body>), for every crawler and share preview.
+  htmlLimitedBots: /.*/,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

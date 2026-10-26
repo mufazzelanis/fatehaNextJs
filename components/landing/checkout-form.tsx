@@ -6,6 +6,7 @@ import { initialState } from "@/lib/action-state";
 import type { CheckoutConfig, CustomField } from "@/lib/checkout";
 import { Spinner } from "../form-bits";
 import { track } from "@/lib/meta/pixel-client";
+import { sized } from "@/lib/media";
 
 type Props = {
   product: { id: number; name: string; weight: string | null; price: number; image: string; stock: number };
@@ -146,7 +147,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
             <div className="flex min-w-0 items-center gap-2.5">
               <Radio checked />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={product.image} alt="" className="size-[34px] shrink-0 rounded-[3px] bg-white object-contain" />
+              <img src={sized(product.image, 96)} alt="" width={34} height={34} className="size-[34px] shrink-0 rounded-[3px] bg-white object-contain" />
               <span className="font-sans text-[13px] font-semibold leading-snug text-[#2d3748]">{productLabel}</span>
             </div>
             <div className="flex w-[88px] items-center justify-center">
@@ -183,7 +184,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
               <td className="py-2.5 pr-2">
                 <div className="flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={product.image} alt="" className="size-[34px] object-contain" />
+                  <img src={sized(product.image, 96)} alt="" width={34} height={34} className="size-[34px] object-contain" />
                   <span className="flex-1 font-sans text-[#5a67d8]">{productLabel}</span>
                   <span className="whitespace-nowrap text-[#4a5568]">× {quantity}</span>
                 </div>
@@ -220,7 +221,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
         </div>
 
         {config.privacyText && (
-          <p className="mt-2 text-justify font-sans text-[9.5px] leading-[1.45] text-[#718096]">{config.privacyText}</p>
+          <p className="mt-2 text-justify font-sans text-[9.5px] leading-[1.45] text-[#5a6577]">{config.privacyText}</p>
         )}
 
         {state.error && (

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { openDrawer, useCart, useWishlist } from "./cart-store";
 import { bdt } from "@/lib/store-config";
+import { sized } from "@/lib/media";
 import { BagIcon, ChevronRightIcon, HeartIcon, MenuIcon, SearchIcon, UserIcon, XIcon } from "../icons";
 
 type Cat = { name: string; slug: string; products: number };
@@ -57,7 +58,7 @@ function SearchBox({ autoFocus = false, onDone }: { autoFocus?: boolean; onDone?
       {open && q.trim().length >= 2 && (
         <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 animate-fade-in">
           {items.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-slate-500">No products found for “{q.trim()}”</p>
+            <p className="px-4 py-3 text-sm text-slate-600">No products found for “{q.trim()}”</p>
           ) : (
             <ul role="listbox" id={listId}>
               {items.map((it, i) => (
@@ -65,10 +66,10 @@ function SearchBox({ autoFocus = false, onDone }: { autoFocus?: boolean; onDone?
                   <button type="button" onMouseEnter={() => setActive(i)} onClick={() => go(`/products/${it.slug}`)}
                     className={`flex w-full items-center gap-3 px-3 py-2 text-left transition ${i === active ? "bg-fb-50" : ""}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={it.image} alt="" className="size-11 shrink-0 rounded-lg bg-slate-50 object-contain" />
+                    <img src={sized(it.image, 96)} alt="" width={44} height={44} className="size-11 shrink-0 rounded-lg bg-slate-50 object-contain" />
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-1 text-sm font-medium text-ink">{it.name}</span>
-                      <span className="text-xs text-slate-500">{it.category}</span>
+                      <span className="text-xs text-slate-600">{it.category}</span>
                     </span>
                     <span className="text-sm font-semibold text-fb-700">{bdt(it.price)}</span>
                   </button>
@@ -120,7 +121,7 @@ export function StoreHeader({ categories, announcement }: { categories: Cat[]; a
           </button>
           <Link href="/" className="shrink-0" aria-label="Fatehabd home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" className="h-7 w-auto sm:h-9" />
+            <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" width={729} height={121} className="h-7 w-auto sm:h-9" />
           </Link>
           <div className="hidden flex-1 md:block lg:mx-6">
             <SearchBox />
@@ -130,13 +131,14 @@ export function StoreHeader({ categories, announcement }: { categories: Cat[]; a
               <HeartIcon className="size-6" />
               {wish.length > 0 && <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{wish.length}</span>}
             </Link>
-            <button type="button" onClick={openDrawer} className="relative flex h-11 items-center gap-2 rounded-xl px-2 text-ink transition hover:bg-slate-100 sm:px-3" aria-label={`Cart (${count})`}>
+            <button type="button" onClick={openDrawer} className="relative flex h-11 items-center gap-2 rounded-xl px-2 text-ink transition hover:bg-slate-100 sm:px-3">
               <span className="relative">
-                <BagIcon className="size-6" />
+                <span className="sr-only lg:hidden">Cart</span>
+                <BagIcon className="size-6" aria-hidden />
                 {count > 0 && <span key={count} className="absolute -right-2 -top-2 grid min-w-5 place-items-center rounded-full bg-fb-500 px-1 text-[10px] font-bold text-white animate-fade-in">{count}</span>}
               </span>
               <span className="hidden text-left leading-tight lg:block">
-                <span className="block text-[11px] text-slate-500">My cart</span>
+                <span className="block text-[11px] text-slate-600">My cart</span>
                 <span className="block text-sm font-semibold">{bdt(subtotal)}</span>
               </span>
             </button>
@@ -164,13 +166,13 @@ export function StoreHeader({ categories, announcement }: { categories: Cat[]; a
       </header>
 
       {/* Mobile menu */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${menu ? "" : "pointer-events-none"}`} aria-hidden={!menu}>
+      <div className={`fixed inset-0 z-50 lg:hidden ${menu ? "" : "pointer-events-none"}`} inert={!menu}>
         <div onClick={() => setMenu(false)} className={`absolute inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity duration-300 ${menu ? "opacity-100" : "opacity-0"}`} />
         <aside className={`absolute inset-y-0 left-0 flex w-[84%] max-w-sm flex-col bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${menu ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="flex items-center justify-between border-b border-slate-100 p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" className="h-7 w-auto" />
-            <button type="button" onClick={() => setMenu(false)} className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Close menu">
+            <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" width={729} height={121} className="h-7 w-auto" />
+            <button type="button" onClick={() => setMenu(false)} className="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100" aria-label="Close menu">
               <XIcon className="size-5" />
             </button>
           </div>

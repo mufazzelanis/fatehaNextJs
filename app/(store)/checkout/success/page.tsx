@@ -58,7 +58,7 @@ async function Success({ searchParams }: Pick<PageProps<"/checkout/success">, "s
         <h1 className="mt-6 text-2xl font-bold text-ink sm:text-3xl">Thank you! Your order is placed</h1>
         <p className="mt-2 text-ink-soft">We&apos;ll call you shortly to confirm it.</p>
         <p className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-dashed border-fb-300 bg-white px-5 py-2.5">
-          <span className="text-sm text-slate-500">Order number</span><span className="font-mono text-xl font-bold tracking-wide text-fb-700">#{order.order_no}</span>
+          <span className="text-sm text-slate-600">Order number</span><span className="font-mono text-xl font-bold tracking-wide text-fb-700">#{order.order_no}</span>
         </p>
       </div>
 
@@ -97,7 +97,7 @@ async function Success({ searchParams }: Pick<PageProps<"/checkout/success">, "s
         <Link href="/shop" className="flex h-12 items-center justify-center rounded-xl bg-fb-500 font-semibold text-white hover:bg-fb-600">Continue shopping</Link>
       </div>
       {method === "cod" && payments.cod.instructions && (
-        <p className="mt-6 flex items-center justify-center gap-2 text-center text-sm text-slate-500"><PhoneIcon className="size-4" /> {payments.cod.instructions}</p>
+        <p className="mt-6 flex items-center justify-center gap-2 text-center text-sm text-slate-600"><PhoneIcon className="size-4" /> {payments.cod.instructions}</p>
       )}
     </>
   );

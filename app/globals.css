@@ -197,3 +197,10 @@ html[data-sb="collapsed"] .sb-rail:has(:focus-visible) {
 @media (prefers-reduced-motion: reduce) {
   .sb-rail, .admin-main { transition: none !important; }
 }
+
+/* Below-the-fold blocks: the browser skips their layout & paint until they come near the screen (faster first load on phones).
+   The intrinsic size keeps the scrollbar stable before they render. */
+@utility cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
+}

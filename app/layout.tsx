@@ -10,6 +10,8 @@ const hind = Hind_Siliguri({
   subsets: ["bengali", "latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
+  // Bangla fonts are big — the browser fetches them only on pages that show Bangla text (unicode-range), not on every page.
+  preload: false,
 });
 
 const anek = Anek_Bangla({
@@ -17,6 +19,7 @@ const anek = Anek_Bangla({
   subsets: ["bengali", "latin"],
   weight: ["500", "600", "700", "800"],
   display: "swap",
+  preload: false,
 });
 
 const geist = Geist({

@@ -16,7 +16,7 @@ export const DEFAULT_BUTTONS: StoreButtons = {
   layout: "icon-order",
   shape: "rounded",
   cart: { label: "Add to cart", bg: "#edfdfd", text: "#0f7279" },
-  order: { label: "Order now", bg: "#12b3b8", text: "#ffffff" },
+  order: { label: "Order now", bg: "#0f7279", text: "#ffffff" },
 };
 
 export type StoreConfig = {
@@ -161,6 +161,23 @@ function normalizeButtons(raw: unknown): StoreButtons {
 }
 
 /** CSS custom properties consumed by the storefront buttons. */
+/**
+ * Background + text colour for a button whose background an admin picked (e.g. landing page buttons).
+ * White text is kept when it is readable (WCAG 4.5:1); otherwise the colour is deepened a little (bright red stays red),
+ * and on light colours (yellow, lime…) the text turns dark instead.
+ */
+export function readableButton(color: string): { backgroundColor: string; color: string } {
+  const bg = parseColor(color);
+  if (!bg) return { backgroundColor: color, color: "#ffffff" };
+  if (contrastRatio(bg, "#ffffff") >= 4.5) return { backgroundColor: bg, color: "#ffffff" };
+  const { r, g, b } = hexToRgb(bg);
+  for (let k = 0.95; k >= 0.8; k -= 0.05) {
+    const darker = `#${[r, g, b].map((c) => Math.round(c * k).toString(16).padStart(2, "0")).join("")}`;
+    if (contrastRatio(darker, "#ffffff") >= 4.5) return { backgroundColor: darker, color: "#ffffff" };
+  }
+  return { backgroundColor: bg, color: "#111111" };
+}
+
 export function buttonVars(b: StoreButtons): Record<string, string> {
   return {
     "--cart-bg": b.cart.bg, "--cart-fg": b.cart.text, "--order-bg": b.order.bg, "--order-fg": b.order.text,

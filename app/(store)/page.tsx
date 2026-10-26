@@ -5,6 +5,13 @@ import { toCard } from "@/lib/card";
 import { HeroSlider } from "@/components/store/hero-slider";
 import { ProductCard } from "@/components/store/product-card";
 import { ArrowRightIcon, GridIcon } from "@/components/icons";
+import { responsive } from "@/lib/media";
+
+// Category tile art is drawn ~82% of a tile that is 42% of a phone screen.
+const CATEGORY_SIZES = "(min-width: 1024px) 220px, (min-width: 640px) 28vw, 34vw";
+const CATEGORY_SIDE_SIZES = "(min-width: 1024px) 170px, (min-width: 640px) 22vw, 26vw";
+// The first tiles are on screen at load (often the largest thing painted) — fetch those right away.
+const tileLoading = (k: number) => (k < 3 ? { fetchPriority: "high" as const } : { loading: "lazy" as const, decoding: "async" as const });
 
 export const metadata: Metadata = {
   title: { absolute: "Fatehabd — Authentic baby food & baby care in Bangladesh" },
@@ -25,9 +32,9 @@ function SectionHead({ title, href, sub }: { title: string; href?: string; sub?:
     <div className="mb-4 flex items-end justify-between gap-4 sm:mb-5">
       <div>
         <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">{title}</h2>
-        {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}
+        {sub && <p className="mt-0.5 text-sm text-slate-600">{sub}</p>}
       </div>
-      {href && <Link href={href} className="flex shrink-0 items-center gap-1 text-sm font-semibold text-fb-600 transition hover:gap-2">View all <ArrowRightIcon className="size-4" /></Link>}
+      {href && <Link href={href} className="flex shrink-0 items-center gap-1 text-sm font-semibold text-fb-700 transition hover:gap-2">View all <ArrowRightIcon className="size-4" /></Link>}
     </div>
   );
 }
@@ -66,13 +73,13 @@ export default async function HomePage() {
                     <div className="relative size-full">
                       {imgs.slice(0, 3).map((src, j) => (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={j} src={src} alt="" className={`absolute top-1/2 h-[82%] w-auto -translate-y-1/2 object-contain mix-blend-multiply transition duration-500 ${
+                        <img key={j} {...responsive(src, j ? CATEGORY_SIDE_SIZES : CATEGORY_SIZES, [96, 128, 192, 256, 384])} alt="" {...tileLoading(k)} width={400} height={400} className={`absolute top-1/2 h-[82%] w-auto -translate-y-1/2 object-contain mix-blend-multiply transition duration-500 ${
                           j === 0 ? "left-1/2 z-10 -translate-x-1/2 group-hover:scale-110" : j === 1 ? "left-[2%] h-[64%] -rotate-12 opacity-90 group-hover:-translate-x-1" : "right-[2%] h-[64%] rotate-12 opacity-90 group-hover:translate-x-1"}`} />
                       ))}
                     </div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imgs[0] ?? mediaUrl(null)} alt="" className="relative h-[85%] w-auto object-contain mix-blend-multiply transition duration-500 group-hover:scale-110" />
+                    <img {...responsive(imgs[0] ?? mediaUrl(null), CATEGORY_SIZES, [96, 128, 192, 256, 384])} alt="" {...tileLoading(k)} width={400} height={400} className="relative h-[85%] w-auto object-contain mix-blend-multiply transition duration-500 group-hover:scale-110" />
                   )}
                 </div>
                 <p className="mt-2.5 line-clamp-2 min-h-[2.5em] text-[13.5px] font-bold leading-tight text-ink sm:text-base">{c.name}</p>
@@ -102,7 +109,7 @@ export default async function HomePage() {
       <section>
         <SectionHead title={featured.length >= 4 ? "Featured products" : "Popular right now"} href="/shop" sub="Loved by parents across Bangladesh" />
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
-          {picks.map((p, k) => <ProductCard key={p.id} product={toCard(p)} priority={k < 5} />)}
+          {picks.map((p) => <ProductCard key={p.id} product={toCard(p)} />)}
         </div>
       </section>
 
@@ -112,18 +119,18 @@ export default async function HomePage() {
         <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/cod-badge.webp" alt="Cash on Delivery" className="h-14 w-auto -rotate-3 sm:h-16" />
+            <img src="/brand/cod-badge-sm.webp" alt="Cash on Delivery" loading="lazy" decoding="async" width={256} height={144} className="h-14 w-auto -rotate-3 sm:h-16" />
             <div>
               <p className="text-xl font-bold sm:text-2xl">Order now, pay when it arrives</p>
               <p className="mt-1 text-sm text-white/75">Cash on Delivery everywhere in Bangladesh · bKash · Nagad · Rocket · Bank</p>
             </div>
           </div>
-          <Link href="/shop" className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-fb-500 px-6 font-semibold transition hover:bg-fb-400">Start shopping <ArrowRightIcon className="size-4" /></Link>
+          <Link href="/shop" className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-fb-700 px-6 font-semibold transition hover:bg-fb-600">Start shopping <ArrowRightIcon className="size-4" /></Link>
         </div>
       </section>
 
       {sections.filter((s) => s.r.products.length).map(({ c, r }) => (
-        <section key={c.id}>
+        <section key={c.id} className="cv-auto">
           <SectionHead title={c.name} href={`/shop/category/${c.slug}`} sub={`${c.products} products`} />
           <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 md:grid-cols-4 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden">
             {r.products.slice(0, 10).map((p) => (
@@ -134,13 +141,13 @@ export default async function HomePage() {
       ))}
 
       {brands.length > 1 && (
-        <section>
+        <section className="cv-auto">
           <SectionHead title="Shop by brand" />
           <div className="flex flex-wrap gap-2 sm:gap-3">
             {brands.map((b) => (
               <Link key={b.brand} href={`/shop?brand=${encodeURIComponent(b.brand)}`}
                 className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:border-fb-300 hover:text-fb-700 hover:shadow-md">
-                {b.brand} <span className="ml-1 text-xs font-normal text-slate-400">{b.n}</span>
+                {b.brand} <span className="ml-1 text-xs font-normal text-slate-600">{b.n}</span>
               </Link>
             ))}
           </div>

@@ -8,7 +8,7 @@ export default function NotFound() {
     <main className="grid min-h-[70vh] flex-1 place-items-center bg-[#f4f6f8] px-4 py-16 font-ui text-ink">
       <div className="max-w-md text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" className="mx-auto h-9 w-auto" />
+        <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" width={729} height={121} className="mx-auto h-9 w-auto" />
         <p className="mt-10 text-7xl font-extrabold tracking-tight text-fb-500">404</p>
         <h1 className="mt-3 text-2xl font-bold">This page could not be found</h1>
         <p className="mt-2 text-slate-500">দুঃখিত, এই পেজটি পাওয়া যায়নি। লিংকটি হয়তো বদলে গেছে বা মুছে ফেলা হয়েছে।</p>

@@ -8,6 +8,7 @@ import { bdt, deliveryCharge, type StoreConfig } from "@/lib/store-config";
 import { isWallet, PAYMENT_LABEL, type PaymentConfig, type PaymentMethod } from "@/lib/payments";
 import { syncCart, useCart } from "./cart-store";
 import { track } from "@/lib/meta/pixel-client";
+import { sized } from "@/lib/media";
 import { Spinner } from "../form-bits";
 import { BagIcon, CashIcon, CheckIcon, LockIcon, ShieldIcon } from "../icons";
 
@@ -101,9 +102,9 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
   if (!items.length) {
     return (
       <div className="mx-auto max-w-md rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-        <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-fb-50 text-fb-600"><BagIcon className="size-8" /></span>
+        <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-fb-50 text-fb-700"><BagIcon className="size-8" /></span>
         <p className="mt-4 text-lg font-semibold text-ink">Your cart is empty</p>
-        <p className="mt-1 text-sm text-slate-500">Add a few products, then come back to check out.</p>
+        <p className="mt-1 text-sm text-slate-600">Add a few products, then come back to check out.</p>
         <Link href="/shop" className="mt-6 inline-flex h-12 items-center rounded-xl bg-fb-500 px-6 font-semibold text-white hover:bg-fb-600">Browse products</Link>
       </div>
     );
@@ -177,7 +178,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
                 className={`relative flex h-16 items-center gap-2.5 rounded-2xl border-2 px-3 text-left transition ${method === m ? "border-fb-500 bg-fb-50/60 shadow-sm" : "border-slate-200 hover:border-slate-300"}`}>
                 {m === "cod" ? <CashIcon className="size-6 shrink-0 text-ink" /> : <span className={`size-3 shrink-0 rounded-full ${METHOD_STYLE[m].dot}`} />}
                 <span className={`text-sm font-bold leading-tight ${METHOD_STYLE[m].tint}`}>{PAYMENT_LABEL[m]}</span>
-                {method === m && <CheckIcon className="absolute right-2.5 top-2.5 size-4 text-fb-600" strokeWidth={3} />}
+                {method === m && <CheckIcon className="absolute right-2.5 top-2.5 size-4 text-fb-700" strokeWidth={3} />}
               </button>
             ))}
           </div>
@@ -189,7 +190,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
               <div className="space-y-3">
                 <p className="text-ink-soft">{payments[method].instructions}</p>
                 <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
-                  <span className="text-xs text-slate-500">{PAYMENT_LABEL[method]} {payments[method].accountType} number</span>
+                  <span className="text-xs text-slate-600">{PAYMENT_LABEL[method]} {payments[method].accountType} number</span>
                   <span className="font-mono text-lg font-bold tracking-wider text-ink">{payments[method].number}</span>
                   <CopyText value={payments[method].number} />
                 </div>
@@ -218,7 +219,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
                 <dl className="grid gap-x-4 gap-y-1.5 rounded-xl bg-white p-3 ring-1 ring-slate-200 sm:grid-cols-2">
                   {[["Bank", payments.bank.bankName], ["Account name", payments.bank.accountName], ["Account number", payments.bank.accountNumber], ["Branch", payments.bank.branch], ["Routing", payments.bank.routing]]
                     .filter(([, x]) => x).map(([k, x]) => (
-                      <div key={k}><dt className="text-xs text-slate-500">{k}</dt><dd className="flex items-center gap-2 font-semibold text-ink">{x}{k === "Account number" && <CopyText value={x} />}</dd></div>
+                      <div key={k}><dt className="text-xs text-slate-600">{k}</dt><dd className="flex items-center gap-2 font-semibold text-ink">{x}{k === "Account number" && <CopyText value={x} />}</dd></div>
                     ))}
                 </dl>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -248,7 +249,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
               <li key={i.id} className="flex items-center gap-3 py-3">
                 <span className="relative shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={i.image} alt="" className="size-14 rounded-xl bg-slate-50 object-contain p-1" />
+                  <img src={sized(i.image, 128)} alt="" width={56} height={56} className="size-14 rounded-xl bg-slate-50 object-contain p-1" />
                   <span className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-ink text-[10px] font-bold text-white">{i.qty}</span>
                 </span>
                 <span className="line-clamp-2 min-w-0 flex-1 text-sm text-ink">{i.name}</span>
@@ -273,8 +274,8 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
               className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-fb-500 text-base font-bold text-white shadow-lg shadow-fb-500/30 transition hover:bg-fb-600 active:scale-[0.99] disabled:opacity-70">
               {pending ? <><Spinner className="size-5" /> Placing order…</> : <>Place order · {bdt(total)}</>}
             </button>
-            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500"><LockIcon className="size-3.5" /> Your details are only used to deliver this order</p>
-            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldIcon className="size-3.5" /> 100% authentic products · {store.deliveryDays}</p>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-600"><LockIcon className="size-3.5" /> Your details are only used to deliver this order</p>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-600"><ShieldIcon className="size-3.5" /> 100% authentic products · {store.deliveryDays}</p>
           </div>
         </div>
       </aside>

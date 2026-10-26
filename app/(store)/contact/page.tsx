@@ -17,31 +17,31 @@ export default async function ContactPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {phone && (
           <a href={`tel:${phone}`} className={card}>
-            <span className="grid size-12 place-items-center rounded-xl bg-fb-50 text-fb-600"><PhoneIcon className="size-6" /></span>
-            <span><span className="block text-sm text-slate-500">Call us</span><span className="font-semibold text-ink">{phone}</span></span>
+            <span className="grid size-12 place-items-center rounded-xl bg-fb-50 text-fb-700"><PhoneIcon className="size-6" /></span>
+            <span><span className="block text-sm text-slate-600">Call us</span><span className="font-semibold text-ink">{phone}</span></span>
           </a>
         )}
         {wa && (
           <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" className={card}>
             <span className="grid size-12 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><WhatsappIcon className="size-6" /></span>
-            <span><span className="block text-sm text-slate-500">WhatsApp</span><span className="font-semibold text-ink">Chat with us</span></span>
+            <span><span className="block text-sm text-slate-600">WhatsApp</span><span className="font-semibold text-ink">Chat with us</span></span>
           </a>
         )}
         {cfg.supportEmail && (
           <a href={`mailto:${cfg.supportEmail}`} className={card}>
-            <span className="grid size-12 place-items-center rounded-xl bg-fb-50 text-lg font-bold text-fb-600">@</span>
-            <span><span className="block text-sm text-slate-500">Email</span><span className="font-semibold text-ink">{cfg.supportEmail}</span></span>
+            <span className="grid size-12 place-items-center rounded-xl bg-fb-50 text-lg font-bold text-fb-700">@</span>
+            <span><span className="block text-sm text-slate-600">Email</span><span className="font-semibold text-ink">{cfg.supportEmail}</span></span>
           </a>
         )}
         {cfg.supportAddress && (
           <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5">
-            <span className="grid size-12 place-items-center rounded-xl bg-fb-50 text-fb-600"><MapPinIcon className="size-6" /></span>
-            <span><span className="block text-sm text-slate-500">Address</span><span className="font-semibold text-ink">{cfg.supportAddress}</span></span>
+            <span className="grid size-12 place-items-center rounded-xl bg-fb-50 text-fb-700"><MapPinIcon className="size-6" /></span>
+            <span><span className="block text-sm text-slate-600">Address</span><span className="font-semibold text-ink">{cfg.supportAddress}</span></span>
           </div>
         )}
       </div>
       {!phone && !wa && !cfg.supportEmail && (
-        <p className="mt-6 rounded-2xl bg-white p-5 text-sm text-slate-500">Contact details will appear here once they are added in the admin panel.</p>
+        <p className="mt-6 rounded-2xl bg-white p-5 text-sm text-slate-600">Contact details will appear here once they are added in the admin panel.</p>
       )}
     </div>
   );

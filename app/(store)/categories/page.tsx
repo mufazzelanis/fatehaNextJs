@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCategories, getShopProducts, mediaUrl } from "@/lib/data/catalog";
 import { ArrowRightIcon } from "@/components/icons";
+import { sized } from "@/lib/media";
 
 export const metadata: Metadata = { title: "Categories" };
 
@@ -17,14 +18,14 @@ export default async function CategoriesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-lg font-bold text-ink">{c.name}</p>
-                <p className="text-sm text-slate-500">{c.products} products</p>
+                <p className="text-sm text-slate-600">{c.products} products</p>
               </div>
-              <span className="grid size-10 place-items-center rounded-full bg-fb-50 text-fb-600 transition group-hover:bg-fb-500 group-hover:text-white"><ArrowRightIcon className="size-5" /></span>
+              <span className="grid size-10 place-items-center rounded-full bg-fb-50 text-fb-700 transition group-hover:bg-fb-500 group-hover:text-white"><ArrowRightIcon className="size-5" /></span>
             </div>
             <div className="mt-4 grid grid-cols-4 gap-2">
               {covers[i].products.map((p) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={p.id} src={mediaUrl(p.image)} alt="" className="aspect-square w-full rounded-xl bg-slate-50 object-contain p-1.5" />
+                <img key={p.id} src={sized(mediaUrl(p.image), 192)} alt="" width={96} height={96} loading="lazy" decoding="async" className="aspect-square w-full rounded-xl bg-slate-50 object-contain p-1.5" />
               ))}
             </div>
           </Link>

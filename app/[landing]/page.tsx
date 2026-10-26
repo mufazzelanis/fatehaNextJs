@@ -10,13 +10,16 @@ import { bn } from "@/lib/format";
 import { CheckoutForm } from "@/components/landing/checkout-form";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { RichText } from "@/components/rich-text";
+import { responsive } from "@/lib/media";
+import { readableButton } from "@/lib/store-config";
+import { mediaSize } from "@/lib/uploads";
 import { ViewContentEvent } from "@/components/meta/meta-pixel";
 
 function OrderButton({ color, text }: { color: string; text: string }) {
   return (
     <a href="#order"
-      className="inline-block rounded-[12px] px-[22px] py-[10px] text-[15px] font-medium text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md hover:brightness-110"
-      style={{ backgroundColor: color }}>
+      className="inline-block rounded-[12px] px-[22px] py-[10px] text-[15px] font-medium shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md hover:brightness-110"
+      style={readableButton(color)}>
       {text}
     </a>
   );
@@ -46,7 +49,7 @@ export async function generateMetadata({ params }: PageProps<"/[landing]">): Pro
   if (!l) return {};
   const product = await getLandingProduct(l.product_id);
   const title = l.seo_title || l.name;
-  const description = l.seo_description || undefined;
+  const description = l.seo_description || `${product?.name ?? l.name} — অরিজিনাল পণ্য, সারা বাংলাদেশে ক্যাশ অন ডেলিভারি। এখনই অর্ডার করুন।`;
   const image = product?.image ? mediaUrl(product.image) : undefined;
   return {
     title: { absolute: title }, description,
@@ -78,7 +81,10 @@ async function LandingResolver({ params, searchParams }: Pick<PageProps<"/[landi
 }
 
 async function LandingPage({ landing: l, preview }: { landing: Landing; preview: boolean }) {
-  const [product, ls] = await Promise.all([getLandingProduct(l.product_id), getLandingSettings()]);
+  const [product, ls, bannerSize] = await Promise.all([
+    getLandingProduct(l.product_id), getLandingSettings(),
+    l.banner_image ? mediaSize(l.banner_image) : { width: 1060, height: 300 },
+  ]);
   const c = l.content;
   const checkout = l.checkout;
   const image = productImageUrl(product);
@@ -94,7 +100,7 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
           <div className="mx-auto w-[220px] sm:mx-0 sm:w-auto">
             <div className="grid aspect-[230/215] place-items-center bg-white p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image} alt={productName} className="max-h-full max-w-full object-contain" fetchPriority="high" />
+              <img {...responsive(image, "204px", [192, 256, 384, 512])} alt={productName} width={400} height={400} className="size-full object-contain" fetchPriority="high" />
             </div>
             {c.doctorCaption.trim() && (
               <p className="mt-3 whitespace-pre-line text-center text-[12px] font-bold leading-[1.25] text-[#1a1a1a]">
@@ -104,7 +110,7 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
           </div>
           <div className="border-[3px] border-[#1d6b4a] bg-white shadow-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={landingBannerUrl(l)} alt={`${productName} লেবেল`} className="block h-auto w-full" />
+            <img {...responsive(landingBannerUrl(l), "(min-width: 640px) 680px, calc(100vw - 38px)", [384, 512, 640, 828])} alt={`${productName} লেবেল`} {...bannerSize} className="block h-auto w-full" />
           </div>
         </div>
       </section>
@@ -155,7 +161,7 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
           <div className="mx-auto grid max-w-[940px] items-center gap-6 px-4 md:grid-cols-2">
             <div className="mx-auto grid aspect-square w-full max-w-90 place-items-center bg-white p-6">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image} alt={productName} className="max-h-full max-w-full object-contain transition duration-500 hover:scale-105" loading="lazy" />
+              <img {...responsive(image, "(min-width: 768px) 312px, calc(100vw - 80px)", [256, 384, 512, 640])} alt={productName} width={400} height={400} className="size-full object-contain transition duration-500 hover:scale-105" loading="lazy" decoding="async" />
             </div>
             <div className="text-center">
               <p className="text-[19px] font-bold text-[#ff1414] sm:text-[20px]"><RichText text={c.priceTitle} price={priceBn} /></p>

@@ -11,7 +11,7 @@ export function StoreBottomNav() {
   const { count } = useCart();
   const wish = useWishlist();
   const tab = (active: boolean) =>
-    `relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition active:scale-95 ${active ? "text-fb-600" : "text-slate-500"}`;
+    `relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition active:scale-95 ${active ? "text-fb-700" : "text-slate-600"}`;
   const items = [
     { href: "/", label: "Home", icon: HomeIcon, active: pathname === "/" },
     { href: "/shop", label: "Shop", icon: GridIcon, active: pathname.startsWith("/shop") },
@@ -27,7 +27,7 @@ export function StoreBottomNav() {
             <Icon className="size-6" />{label}
           </Link>
         ))}
-        <button type="button" onClick={openDrawer} className="relative -mt-5 flex flex-col items-center gap-0.5 text-[11px] font-medium text-slate-600" aria-label={`Cart (${count})`}>
+        <button type="button" onClick={openDrawer} className="relative -mt-5 flex flex-col items-center gap-0.5 text-[11px] font-medium text-slate-600">
           <span className="relative grid size-14 place-items-center rounded-full bg-fb-500 text-white shadow-lg shadow-fb-500/40 ring-4 ring-white">
             <BagIcon className="size-6" />
             {count > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold">{count}</span>}

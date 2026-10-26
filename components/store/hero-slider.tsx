@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HeroSlide } from "@/lib/store-config";
+import { responsive } from "@/lib/media";
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "../icons";
 
 const TONES: Record<HeroSlide["tone"], { bg: string; glow: string; chip: string }> = {
@@ -11,6 +12,8 @@ const TONES: Record<HeroSlide["tone"], { bg: string; glow: string; chip: string 
   sunset: { bg: "from-[#ff8a3d] via-[#f43f5e] to-[#9d174d]", glow: "bg-amber-300/40", chip: "bg-white/15" },
 };
 const INTERVAL = 5500;
+// Only the first slide is on screen at load; the others wait so they don't compete with it.
+const first = (k: number) => (k === 0 ? { fetchPriority: "high" as const } : { loading: "lazy" as const, fetchPriority: "low" as const });
 
 /** Auto-playing hero carousel: swipe, arrows, progress dots; pauses on hover/touch and when the tab is hidden. */
 export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[][] }) {
@@ -49,7 +52,7 @@ export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[]
           const pics = s.image ? [`/media/${s.image}`] : (art[k] ?? []);
           const enter = `transition-all duration-700 ${active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"}`;
           return (
-            <div key={k} className={`relative w-full shrink-0 overflow-hidden bg-linear-to-br ${tone.bg}`} aria-hidden={!active} role="group" aria-roledescription="slide" aria-label={`${k + 1} of ${n}`}>
+            <div key={k} className={`relative w-full shrink-0 overflow-hidden bg-linear-to-br ${tone.bg}`} inert={!active} role="group" aria-roledescription="slide" aria-label={`${k + 1} of ${n}`}>
               {/* decoration */}
               <div className={`absolute -right-10 -top-16 size-56 rounded-full blur-3xl sm:size-96 ${tone.glow}`} />
               <div className="absolute -bottom-20 -left-10 size-52 rounded-full bg-white/10 blur-2xl" />
@@ -62,7 +65,7 @@ export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[]
                   </span>
                   <h2 className={`mt-2.5 line-clamp-3 text-[21px] font-extrabold leading-[1.12] tracking-tight drop-shadow-sm sm:mt-4 sm:text-4xl lg:text-5xl ${enter} delay-75`}>{s.title}</h2>
                   <p className={`mt-2 line-clamp-2 max-w-md text-[12.5px] leading-relaxed text-white/85 sm:mt-3 sm:line-clamp-none sm:text-base ${enter} delay-150`}>{s.subtitle}</p>
-                  <Link href={s.link} tabIndex={active ? 0 : -1}
+                  <Link href={s.link}
                     className={`group/cta mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-white pl-4 pr-1.5 text-[13px] font-bold text-ink shadow-lg shadow-black/15 transition hover:shadow-xl sm:mt-6 sm:h-12 sm:pl-6 sm:text-sm ${enter} delay-200`}>
                     {s.cta}
                     <span className="grid size-7 place-items-center rounded-full bg-ink text-white transition group-hover/cta:translate-x-0.5 sm:size-9"><ArrowRightIcon className="size-3.5 sm:size-4" /></span>
@@ -74,7 +77,7 @@ export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[]
                   <div className="absolute aspect-square w-[92%] max-w-80 rounded-full bg-white/15 ring-1 ring-white/25 sm:w-[80%]" />
                   {pics.length === 1 ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={pics[0]} alt="" className={`relative max-h-40 w-auto max-w-full object-contain drop-shadow-2xl transition duration-700 sm:max-h-80 ${active ? "scale-100 opacity-100" : "scale-90 opacity-0"}`} />
+                    <img {...responsive(pics[0], "(min-width: 640px) 40vw, 36vw", [192, 256, 384, 512, 640, 828])} alt="" {...first(k)} className={`relative max-h-40 w-auto max-w-full object-contain drop-shadow-2xl transition duration-700 sm:max-h-80 ${active ? "scale-100 opacity-100" : "scale-90 opacity-0"}`} />
                   ) : (
                     <div className="relative h-36 w-full sm:h-72">
                       {pics.slice(0, 2).map((src, j) => (
@@ -84,7 +87,8 @@ export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[]
                           } ${active ? "translate-y-0 opacity-100" : j ? "translate-y-6 opacity-0" : "-translate-y-6 opacity-0"}`}
                           style={{ transitionDelay: active ? `${150 + j * 120}ms` : "0ms" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt="" className="max-h-full max-w-full object-contain" />
+                          <img {...responsive(src, "(min-width: 640px) 240px, 26vw", [96, 128, 192, 256, 384])} alt="" {...first(k)}
+                            width={400} height={400} className="size-full object-contain" />
                         </div>
                       ))}
                     </div>
@@ -106,15 +110,18 @@ export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[]
             className="absolute right-3 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white/20 text-white backdrop-blur transition hover:scale-105 hover:bg-white/35 sm:grid">
             <ChevronRightIcon className="size-5" />
           </button>
-          <div className="absolute bottom-3 left-5 flex items-center gap-1.5 sm:bottom-5 sm:left-1/2 sm:-translate-x-1/2">
+          {/* Each dot is a 24px tap target (easy on phones) around the small visible bar. */}
+          <div className="absolute bottom-0.5 left-3 flex items-center sm:bottom-2 sm:left-1/2 sm:-translate-x-1/2">
             {slides.map((_, k) => (
               <button key={k} type="button" onClick={() => go(k)} aria-label={`Go to slide ${k + 1}`} aria-current={k === i}
-                className={`relative h-1.5 overflow-hidden rounded-full transition-all duration-300 ${k === i ? "w-8 bg-white/35" : "w-1.5 bg-white/50 hover:bg-white/80"}`}>
-                {k === i && (
-                  <span key={i} className="absolute inset-0 origin-left rounded-full bg-white"
-                    onAnimationEnd={() => go(i + 1)}
-                    style={{ animation: `slide-progress ${INTERVAL}ms linear forwards`, animationPlayState: running ? "running" : "paused" }} />
-                )}
+                className={`group/dot grid h-6 place-items-center transition-all duration-300 ${k === i ? "w-10" : "w-6"}`}>
+                <span className={`relative block h-1.5 overflow-hidden rounded-full transition-all duration-300 ${k === i ? "w-8 bg-white/35" : "w-1.5 bg-white/50 group-hover/dot:bg-white/80"}`}>
+                  {k === i && (
+                    <span key={i} className="absolute inset-0 origin-left rounded-full bg-white"
+                      onAnimationEnd={() => go(i + 1)}
+                      style={{ animation: `slide-progress ${INTERVAL}ms linear forwards`, animationPlayState: running ? "running" : "paused" }} />
+                  )}
+                </span>
               </button>
             ))}
           </div>

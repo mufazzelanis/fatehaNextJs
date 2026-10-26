@@ -85,7 +85,7 @@ async function Product({ params }: Pick<PageProps<"/products/[slug]">, "params">
   return (
     <div className="mx-auto max-w-7xl px-4 py-5 sm:py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <nav className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-slate-500" aria-label="Breadcrumb">
+      <nav className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-slate-600" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-fb-700">Home</Link><span>/</span>
         <Link href="/shop" className="hover:text-fb-700">Shop</Link>
         {p.category_slug && <><span>/</span><Link href={`/shop/category/${p.category_slug}`} className="hover:text-fb-700">{p.category_name}</Link></>}
@@ -94,7 +94,7 @@ async function Product({ params }: Pick<PageProps<"/products/[slug]">, "params">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-12">
         <ProductGallery images={images} name={p.name} />
         <div className="min-w-0">
-          {p.brand && <Link href={`/shop?brand=${encodeURIComponent(p.brand)}`} className="text-xs font-bold uppercase tracking-wider text-fb-600 hover:underline">{p.brand}</Link>}
+          {p.brand && <Link href={`/shop?brand=${encodeURIComponent(p.brand)}`} className="text-xs font-bold uppercase tracking-wider text-fb-700 hover:underline">{p.brand}</Link>}
           <h1 className="mt-2 text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl">{p.name}</h1>
           <div className="mt-4 flex flex-wrap items-baseline gap-3">
             <span className="text-3xl font-bold text-ink sm:text-4xl">{bdt(p.price)}</span>
@@ -112,7 +112,7 @@ async function Product({ params }: Pick<PageProps<"/products/[slug]">, "params">
           <ul className="mt-4 grid grid-cols-2 gap-2 text-sm">
             {promises.map(([Icon, t]) => (
               <li key={t} className="flex items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 text-ink-soft ring-1 ring-slate-200/80">
-                <Icon className="size-5 shrink-0 text-fb-600" /><span className="leading-tight">{t}</span>
+                <Icon className="size-5 shrink-0 text-fb-700" /><span className="leading-tight">{t}</span>
               </li>
             ))}
           </ul>
@@ -125,7 +125,7 @@ async function Product({ params }: Pick<PageProps<"/products/[slug]">, "params">
         {description ? (
           <div className="prose-store mt-4 text-[15px] leading-relaxed text-ink-soft" dangerouslySetInnerHTML={{ __html: description }} />
         ) : (
-          <p className="mt-3 text-sm text-slate-500">{p.name}. Imported and sealed — every unit is checked before dispatch. Need help choosing? Call us any time.</p>
+          <p className="mt-3 text-sm text-slate-600">{p.name}. Imported and sealed — every unit is checked before dispatch. Need help choosing? Call us any time.</p>
         )}
       </section>
 

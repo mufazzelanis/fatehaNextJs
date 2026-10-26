@@ -6,16 +6,26 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:setup": "node scripts/setup-db.mjs",
+    "import:store": "node scripts/import-fatehabd.mjs",
+    "import:locations": "node scripts/import-locations.mjs",
+    "admin:otp-off": "node scripts/admin-otp-off.mjs"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.13",
+    "mysql2": "^3.24.6",
     "next": "16.4.2",
+    "nodemailer": "10.1.7",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

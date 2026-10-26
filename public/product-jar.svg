@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" role="img" aria-label="মাশরুম ডেন্টোকেয়ার প্লাস">
+  <defs>
+    <linearGradient id="cap" x1="0" x2="1">
+      <stop offset="0" stop-color="#d9dee3"/>
+      <stop offset=".35" stop-color="#ffffff"/>
+      <stop offset=".7" stop-color="#eef1f4"/>
+      <stop offset="1" stop-color="#c9d0d6"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" x2="1">
+      <stop offset="0" stop-color="#e3e7ea"/>
+      <stop offset=".3" stop-color="#ffffff"/>
+      <stop offset=".75" stop-color="#f3f5f7"/>
+      <stop offset="1" stop-color="#d3d9de"/>
+    </linearGradient>
+    <linearGradient id="label" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#0b8a52"/>
+      <stop offset="1" stop-color="#065c37"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#0b4e32" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#0b4e32" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="200" cy="430" rx="150" ry="18" fill="url(#shadow)"/>
+  <!-- cap -->
+  <rect x="88" y="28" width="224" height="78" rx="18" fill="url(#cap)"/>
+  <g stroke="#c3cad1" stroke-width="3">
+    <path d="M110 36v62M130 36v62M150 36v62M170 36v62M190 36v62M210 36v62M230 36v62M250 36v62M270 36v62M290 36v62"/>
+  </g>
+  <rect x="96" y="100" width="208" height="14" rx="5" fill="#cfd5db"/>
+  <!-- body -->
+  <path d="M74 132c0-14 12-24 26-24h200c14 0 26 10 26 24v258c0 22-18 38-40 38H114c-22 0-40-16-40-38z" fill="url(#body)"/>
+  <!-- label -->
+  <rect x="74" y="160" width="252" height="210" fill="#ffffff"/>
+  <rect x="74" y="160" width="252" height="12" fill="#0b8a52"/>
+  <rect x="74" y="358" width="252" height="12" fill="#0b8a52"/>
+  <rect x="74" y="172" width="252" height="3" fill="#e11d48"/>
+  <rect x="74" y="355" width="252" height="3" fill="#e11d48"/>
+  <!-- tooth badge -->
+  <path d="M200 186c-38 0-62 22-62 58 0 30 12 48 18 74 3 14 8 26 18 26 12 0 12-34 26-34s14 34 26 34c10 0 15-12 18-26 6-26 18-44 18-74 0-36-24-58-62-58z" fill="url(#label)"/>
+  <text x="200" y="236" text-anchor="middle" font-family="'Hind Siliguri','Nirmala UI','Vrinda',sans-serif" font-size="27" font-weight="700" fill="#ffffff">মাশরুম</text>
+  <rect x="148" y="246" width="104" height="26" rx="13" fill="#ffffff"/>
+  <text x="200" y="265" text-anchor="middle" font-family="'Hind Siliguri','Nirmala UI','Vrinda',sans-serif" font-size="15" font-weight="700" fill="#e11d48">ডেন্টোকেয়ার</text>
+  <text x="200" y="292" text-anchor="middle" font-family="'Hind Siliguri','Nirmala UI','Vrinda',sans-serif" font-size="14" font-weight="600" fill="#d1fae1">প্লাস • টুথ পাউডার</text>
+  <text x="104" y="210" font-family="sans-serif" font-size="11" font-weight="700" fill="#0b8a52">TM</text>
+  <text x="200" y="346" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#0b5f3b">Net Weight: 100gm</text>
+  <!-- gloss -->
+  <path d="M100 130h22v280h-22z" fill="#ffffff" opacity=".55"/>
+</svg>

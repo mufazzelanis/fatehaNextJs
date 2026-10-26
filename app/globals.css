@@ -1,26 +1,199 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Admin sidebar rail. <html data-sb="collapsed"> (set before paint from localStorage) shrinks the desktop
+ * sidebar to icons; hovering it (or keyboard focus inside it) peeks it open over the page.
+ * `sb-mini:` = "desktop rail is collapsed and not peeking" — the mobile drawer never matches it.
+ */
+@custom-variant sb-mini {
+  html[data-sb="collapsed"] .sb-rail:not(:hover):not(:has(:focus-visible)) & {
+    @slot;
+  }
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@custom-variant sb-collapsed {
+  html[data-sb="collapsed"] & {
+    @slot;
   }
 }
 
+@theme {
+  --font-sans: var(--font-hind), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-anek), var(--font-hind), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-geist), var(--font-hind), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #ecfdf3;
+  --color-brand-100: #d1fae1;
+  --color-brand-200: #a6f4c8;
+  --color-brand-300: #6de8a8;
+  --color-brand-400: #34d385;
+  --color-brand-500: #12b86b;
+  --color-brand-600: #079656;
+  --color-brand-700: #087848;
+  --color-brand-800: #0b5f3b;
+  --color-brand-900: #0b4e32;
+  --color-brand-950: #022c1b;
+
+  /* FatehaBD storefront (teal + charcoal from the original fatehabd.com logo) */
+  --color-fb-50: #edfdfd;
+  --color-fb-100: #d0f9f9;
+  --color-fb-200: #a6f1f2;
+  --color-fb-300: #6ae4e7;
+  --color-fb-400: #2fcdd2;
+  --color-fb-500: #12b3b8;
+  --color-fb-600: #0c8f96;
+  --color-fb-700: #0f7279;
+  --color-fb-800: #135d63;
+  --color-fb-900: #154d53;
+  --color-fb-950: #062f34;
+  --color-ink: #2d2e32;
+  --color-ink-soft: #4b4d53;
+
+  --color-accent-500: #f43f5e;
+  --color-accent-600: #e11d48;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 9s ease-in-out infinite;
+  --animate-shine: shine 3.5s ease-in-out infinite;
+  --animate-pulse-ring: pulse-ring 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  --animate-marquee: marquee 28s linear infinite;
+  --animate-fade-in: fade-in 0.35s ease-out both;
+  --animate-slide-up: slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-page-in: page-in 0.3s ease-out backwards;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-14px) rotate(1deg); }
+  }
+  @keyframes shine {
+    0% { transform: translateX(-120%) skewX(-20deg); }
+    60%, 100% { transform: translateX(220%) skewX(-20deg); }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(225 29 72 / 0.55); }
+    100% { box-shadow: 0 0 0 18px rgb(225 29 72 / 0); }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  /* opacity only: a transform here would trap position:fixed children (save bars) inside the page */
+  @keyframes page-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-progress {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-brand-950);
+}
+
+/* Scroll reveal — enabled by <Reveal>, visible by default without JS */
+.reveal-ready [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal-ready [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal-ready [data-reveal] { opacity: 1; transform: none; }
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-linear-to-r from-accent-600 to-accent-500 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-rose-600/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-rose-600/40 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-brand-700/15 bg-white/70 px-6 py-3.5 text-base font-semibold text-brand-900 backdrop-blur transition hover:border-brand-600/40 hover:bg-white;
+  }
+  .field {
+    @apply block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 shadow-xs outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 aria-invalid:border-rose-400 aria-invalid:focus:ring-rose-500/15;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+
+  /* Admin UI */
+  .a-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgb(15_23_42/0.04)];
+  }
+  .a-input {
+    @apply block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 aria-invalid:border-rose-400;
+  }
+  .a-label {
+    @apply mb-1 block text-xs font-medium text-slate-600;
+  }
+  .a-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-60;
+  }
+  .a-btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-60;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+}
+
+/* Product descriptions written in the admin */
+.prose-store p { margin: 0 0 0.85em; }
+.prose-store ul, .prose-store ol { margin: 0 0 0.85em 1.25em; }
+.prose-store ul { list-style: disc; }
+.prose-store ol { list-style: decimal; }
+.prose-store h3, .prose-store h4 { margin: 1.2em 0 0.4em; font-weight: 700; color: var(--color-ink); }
+.prose-store table { width: 100%; border-collapse: collapse; margin-bottom: 1em; font-size: 0.9em; }
+.prose-store td, .prose-store th { border: 1px solid #e2e8f0; padding: 0.4em 0.6em; text-align: left; }
+
+/* Admin sidebar widths (see the sb-mini variant at the top). */
+.admin-shell { --sb-w: 16rem; }
+html[data-sb="collapsed"] .admin-shell { --sb-w: 4.75rem; }
+@media (min-width: 64rem) {
+  .admin-main { padding-left: var(--sb-w); transition: padding-left 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+}
+.sb-rail { width: var(--sb-w); transition: width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s; }
+html[data-sb="collapsed"] .sb-rail:hover,
+html[data-sb="collapsed"] .sb-rail:has(:focus-visible) {
+  width: 16rem;
+  box-shadow: 12px 0 40px -8px rgb(2 6 23 / 0.45);
+  transition-delay: 0.12s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-rail, .admin-main { transition: none !important; }
 }

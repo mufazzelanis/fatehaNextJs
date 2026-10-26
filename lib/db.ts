@@ -18,8 +18,9 @@ function createPool() {
     timezone: "+06:00",
   });
   // NOW(), CURDATE() and DEFAULT CURRENT_TIMESTAMP must be Bangladesh time on every server (a VPS is usually UTC).
+  // Same SQL rules on MariaDB (local XAMPP) and MySQL 8 (VPS) — MySQL's default ONLY_FULL_GROUP_BY rejects report queries.
   p.on("connection", (conn) => {
-    conn.query("SET time_zone = '+06:00'");
+    conn.query("SET time_zone = '+06:00', sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
   });
   return p;
 }

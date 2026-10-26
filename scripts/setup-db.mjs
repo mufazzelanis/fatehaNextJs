@@ -36,7 +36,22 @@ await conn.query(
   `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
 );
 await conn.query(`USE \`${database}\``);
-await conn.query(readFileSync(resolve(process.cwd(), "database/schema.sql"), "utf8"));
+// MySQL 8 has no "ADD COLUMN/INDEX IF NOT EXISTS" (MariaDB only), so those are checked here instead.
+const schema = readFileSync(resolve(process.cwd(), "database/schema.sql"), "utf8")
+  .split(/\r?\n/).filter((l) => !/^\s*--/.test(l)).join("\n");
+for (const sql of schema.split(/;\s*(?:\n|$)/).map((s) => s.trim()).filter(Boolean)) {
+  const m = sql.match(/^ALTER TABLE (\w+) ADD (COLUMN|INDEX) IF NOT EXISTS (\w+)/i);
+  if (m) {
+    const [, table, kind, name] = m;
+    const [found] = kind.toUpperCase() === "COLUMN"
+      ? await conn.query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?", [database, table, name])
+      : await conn.query("SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?", [database, table, name]);
+    if (found.length) continue;
+    await conn.query(sql.replace(/ IF NOT EXISTS/i, ""));
+  } else {
+    await conn.query(sql);
+  }
+}
 console.log(`✔ Database "${database}" and tables ready`);
 // City (metropolitan) thanas — only inserted once the districts exist (after `npm run import:locations`).
 await conn.query(readFileSync(resolve(process.cwd(), "database/city-thanas.sql"), "utf8"));

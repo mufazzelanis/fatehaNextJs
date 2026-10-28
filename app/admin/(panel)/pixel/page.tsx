@@ -5,7 +5,11 @@ import { requirePermission } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { getMarketingConfig, MAX_PIXELS } from "@/lib/meta/config";
 import { dateTime } from "@/lib/format";
-import { EmptyState, PageHeader, PanelSkeleton } from "@/components/admin/ui";
+import { EmptyState, PageHeader, Pagination, PanelSkeleton } from "@/components/admin/ui";
+import { EVENT_NAMES } from "@/lib/meta/shared";
+import { TIME_SLOTS } from "@/lib/data/orders";
+import { DEVICE_KIND_LABEL, parseDevice } from "@/lib/device";
+import { ClockIcon } from "@/components/icons";
 import { EventsChart, type DayCount } from "./events-chart";
 import { PixelSettingsForm, RetryButton, TestEventForm, VerifyPanel } from "./pixel-forms";
 
@@ -22,8 +26,29 @@ export default function PixelPage({ searchParams }: PageProps<"/admin/pixel">) {
 type LogRow = {
   id: number; event_name: string; event_id: string; order_id: number | null; order_no: string | null; pixel_id: string | null;
   success: number; http_status: number | null; is_test: number; retried: number; response: string | null; created_at: Date;
-  client_ip: string | null;
+  client_ip: string | null; client_ua: string | null;
 };
+
+const LOG_PER_PAGE = 50;
+const LOG_DAYS = 30;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** "YYYY-MM-DD" in Bangladesh time, `back` days ago. */
+function bdDate(back = 0) {
+  const d = new Date(Date.now() + 6 * 3600_000 - back * 86_400_000);
+  return d.toISOString().slice(0, 10);
+}
+
+function DeviceCell({ ua }: { ua: string | null }) {
+  const d = parseDevice(ua);
+  if (!d) return <span className="text-slate-300">—</span>;
+  const icon = d.kind === "phone" ? "📱" : d.kind === "tablet" ? "📲" : d.kind === "bot" ? "🤖" : "💻";
+  return (
+    <div className="text-xs" title={ua ?? ""}>
+      <p className="whitespace-nowrap font-medium text-slate-700"><span aria-hidden="true">{icon}</span> {DEVICE_KIND_LABEL[d.kind]}</p>
+      {(d.os || d.browser) && <p className="whitespace-nowrap text-slate-500">{[d.os, d.browser].filter(Boolean).join(" · ")}</p>}
+    </div>
+  );
+}
 
 /** Each event type gets its own colour in the log, so a funnel (view → cart → checkout → purchase) is easy to follow. */
 const EVENT_STYLE: Record<string, string> = {
@@ -42,22 +67,35 @@ const eventStyle = (name: string) => EVENT_STYLE[name] ?? "bg-slate-50 text-slat
 async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchParams">) {
   await requirePermission("marketing.manage");
   await connection(); // renders dates relative to now — always at request time
-  const { log, event } = await searchParams;
-  const failedOnly = log === "failed";
-  const eventFilter = typeof event === "string" && /^[A-Za-z]{3,30}$/.test(event) ? event : "";
+  const sp = await searchParams;
+  const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : "");
+  const failedOnly = one("log") === "failed";
+  const eventFilter = /^[A-Za-z]{3,30}$/.test(one("event")) ? one("event") : "";
+  const fromDate = DAY.test(one("from")) ? one("from") : "";
+  const toDate = DAY.test(one("to")) ? one("to") : "";
+  const timeSlot = TIME_SLOTS.find((t) => t.id === one("time"));
+  const page = Math.max(Number(one("page")) || 1, 1);
   const config = await getMarketingConfig();
   // While testing, count test events too so the numbers move; otherwise only real traffic.
   const testFilter = config.testEventCode ? "1 = 1" : "is_test = 0";
 
-  const where: string[] = [];
-  const params: string[] = [];
+  // The log keeps 30 days; every filter works inside that window.
+  const where: string[] = [`l.created_at >= NOW() - INTERVAL ${LOG_DAYS} DAY`];
+  const params: (string | number)[] = [];
   if (failedOnly) where.push("l.success = 0");
   if (eventFilter) {
     where.push("l.event_name = ?");
     params.push(eventFilter);
   }
+  if (fromDate) { where.push("l.created_at >= ?"); params.push(`${fromDate} 00:00:00`); }
+  if (toDate) { where.push("l.created_at <= ?"); params.push(`${toDate} 23:59:59`); }
+  if (timeSlot) {
+    where.push("HOUR(l.created_at) >= ? AND HOUR(l.created_at) < ?");
+    params.push(timeSlot.from, timeSlot.from + 6);
+  }
+  const whereSql = `WHERE ${where.join(" AND ")}`;
 
-  const [stats, byEvent, rows, retryable, daily, unsent] = await Promise.all([
+  const [stats, byEvent, rows, retryable, daily, unsent, logCount] = await Promise.all([
     queryOne<{ total: number; ok: number; failed: number }>(
       `SELECT COUNT(*) total, COALESCE(SUM(success),0) ok, COALESCE(SUM(success = 0),0) failed FROM pixel_event_log WHERE created_at >= NOW() - INTERVAL 1 DAY AND ${testFilter}`,
     ),
@@ -67,10 +105,10 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     ),
     query<LogRow>(
       `SELECT l.id, l.event_name, l.event_id, l.order_id, l.pixel_id, l.success, l.http_status, l.is_test, l.retried, l.response, l.created_at,
-              COALESCE(l.client_ip, o.ip_address) client_ip, o.order_no
+              COALESCE(l.client_ip, o.ip_address) client_ip, COALESCE(l.client_ua, o.user_agent) client_ua, o.order_no
        FROM pixel_event_log l LEFT JOIN orders o ON o.id = l.order_id
-       ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY l.id DESC LIMIT 80`,
-      params,
+       ${whereSql} ORDER BY l.created_at DESC, l.id DESC LIMIT ? OFFSET ?`,
+      [...params, LOG_PER_PAGE, (page - 1) * LOG_PER_PAGE],
     ),
     queryOne<{ count: number }>(
       "SELECT COUNT(*) count FROM pixel_event_log WHERE success = 0 AND retried = 0 AND payload IS NOT NULL AND created_at >= NOW() - INTERVAL 7 DAY",
@@ -83,7 +121,11 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
       `SELECT COUNT(*) count FROM orders WHERE pixel_purchase_sent_at IS NULL AND status NOT IN ('cancelled','returned')
        AND created_at >= NOW() - INTERVAL 7 DAY`,
     ),
+    queryOne<{ count: number }>(`SELECT COUNT(*) count FROM pixel_event_log l ${whereSql}`, params),
   ]);
+  const logTotal = Number(logCount?.count ?? 0);
+  const logPages = Math.max(Math.ceil(logTotal / LOG_PER_PAGE), 1);
+  const hasLogFilters = !!(eventFilter || fromDate || toDate || timeSlot || failedOnly);
 
   const byDay = new Map(daily.map((d) => [d.day, d]));
   const series: DayCount[] = Array.from({ length: 7 }, (_, i) => {
@@ -126,15 +168,21 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     },
   ];
 
-  const filterHref = (over: { log?: string; event?: string }) => {
+  type LogParams = { log?: string; event?: string; from?: string; to?: string; time?: string; page?: number };
+  const filterHref = (over: LogParams) => {
+    const cur: LogParams = { log: failedOnly ? "failed" : "", event: eventFilter, from: fromDate, to: toDate, time: timeSlot?.id ?? "", page: 1 };
+    const merged = { ...cur, ...over };
     const p = new URLSearchParams();
-    const l = over.log ?? (failedOnly ? "failed" : "");
-    const e = over.event ?? eventFilter;
-    if (l) p.set("log", l);
-    if (e) p.set("event", e);
-    const s = p.toString();
-    return `/admin/pixel${s ? `?${s}` : ""}`;
+    for (const [k, v] of Object.entries(merged)) if (v && !(k === "page" && v === 1)) p.set(k, String(v));
+    const q = p.toString();
+    return `/admin/pixel${q ? `?${q}` : ""}#log`;
   };
+  const quick = [
+    { label: "Today", from: bdDate(0), to: bdDate(0) },
+    { label: "Yesterday", from: bdDate(1), to: bdDate(1) },
+    { label: "Last 7 days", from: bdDate(6), to: bdDate(0) },
+    { label: "Last 30 days", from: bdDate(29), to: bdDate(0) },
+  ];
 
   return (
     <>
@@ -221,13 +269,13 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
         </div>
       </div>
 
-      <section className="a-card mt-6 overflow-hidden">
+      <section id="log" className="a-card mt-6 scroll-mt-20 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="font-medium text-slate-900">Server event log</h2>
             <p className="text-xs text-slate-500">
-              Last 80 Conversions API deliveries{eventFilter ? ` · ${eventFilter}` : ""} (kept 30 days)
-              {eventFilter && <> · <Link href={filterHref({ event: "" })} className="text-brand-700 underline">clear filter</Link></>}
+              <b className="font-semibold text-slate-700">{logTotal.toLocaleString("en-IN")}</b> Conversions API deliver{logTotal === 1 ? "y" : "ies"}
+              {hasLogFilters ? " match" : " in the last 30 days"} · every event is kept for 30 days
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -238,12 +286,49 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
             </div>
           </div>
         </div>
+
+        {/* Filters: date, time of day, event */}
+        <form action="/admin/pixel#log" className="space-y-3 border-b border-slate-100 bg-slate-50/50 px-5 py-4">
+          {failedOnly && <input type="hidden" name="log" value="failed" />}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Date</span>
+            {quick.map((q) => {
+              const active = fromDate === q.from && toDate === q.to;
+              return (
+                <Link key={q.label} href={filterHref({ from: active ? "" : q.from, to: active ? "" : q.to })}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition ${active ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"}`}>{q.label}</Link>
+              );
+            })}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end">
+            <label className="block"><span className="a-label">From</span><input type="date" name="from" defaultValue={fromDate} min={bdDate(LOG_DAYS)} max={bdDate(0)} className="a-input" /></label>
+            <label className="block"><span className="a-label">To</span><input type="date" name="to" defaultValue={toDate} min={bdDate(LOG_DAYS)} max={bdDate(0)} className="a-input" /></label>
+            <label className="block">
+              <span className="a-label flex items-center gap-1"><ClockIcon className="size-3.5" /> Time of day</span>
+              <select name="time" defaultValue={timeSlot?.id ?? ""} className="a-input">
+                <option value="">Any time</option>
+                {TIME_SLOTS.map((t) => <option key={t.id} value={t.id}>{t.label} · {t.hint}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="a-label">Event</span>
+              <select name="event" defaultValue={eventFilter} className="a-input">
+                <option value="">All events</option>
+                {EVENT_NAMES.map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button type="submit" className="a-btn flex-1">Filter</button>
+              {hasLogFilters && <Link href="/admin/pixel#log" className="a-btn-outline">Clear</Link>}
+            </div>
+          </div>
+        </form>
         {rows.length === 0 ? (
-          <EmptyState title={failedOnly ? "No failed events" : "No server events yet"}
-            text={config.capiEnabled ? "Events appear here as visitors browse and order." : "Turn on the Conversions API to start sending events."} />
+          <EmptyState title={hasLogFilters ? "No events match these filters" : "No server events yet"}
+            text={hasLogFilters ? "Try another date, time or event." : config.capiEnabled ? "Events appear here as visitors browse and order." : "Turn on the Conversions API to start sending events."} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-sm">
+            <table className="w-full min-w-[1120px] text-sm">
               <thead className="bg-slate-50/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-2.5 font-medium">Time</th>
@@ -252,6 +337,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                   <th className="px-3 py-2.5 font-medium">Order</th>
                   <th className="px-3 py-2.5 font-medium">Result</th>
                   <th className="px-3 py-2.5 font-medium">IP</th>
+                  <th className="px-3 py-2.5 font-medium">Device</th>
                   <th className="px-5 py-2.5 font-medium">Facebook response</th>
                 </tr>
               </thead>
@@ -278,11 +364,18 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                       {!r.success && !!r.retried && <p className="mt-0.5 text-[11px] text-slate-400">retried</p>}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs text-slate-600">{r.client_ip || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-3 py-2.5"><DeviceCell ua={r.client_ua} /></td>
                     <td className="max-w-80 px-5 py-2.5 text-xs text-slate-500"><p className="line-clamp-2" title={r.response ?? ""}>{r.response}</p></td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {logPages > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
+            <p className="text-sm text-slate-500">Page {page} of {logPages} · {LOG_PER_PAGE} per page</p>
+            <Pagination page={page} pages={logPages} href={(n) => filterHref({ page: n })} />
           </div>
         )}
       </section>

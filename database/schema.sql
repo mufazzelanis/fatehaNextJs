@@ -116,6 +116,8 @@ ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS pixel_id VARCHAR(20) NULL;
 ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS payload TEXT NULL;
 ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS retried TINYINT(1) NOT NULL DEFAULT 0;
 ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS client_ip VARCHAR(64) NULL;
+ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS client_ua VARCHAR(300) NULL;
+ALTER TABLE pixel_event_log ADD INDEX IF NOT EXISTS idx_pixel_event_time (event_name, created_at);
 
 -- Staff roles & permissions
 CREATE TABLE IF NOT EXISTS roles (

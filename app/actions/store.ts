@@ -13,6 +13,7 @@ import { deliveryCharge } from "@/lib/store-config";
 import { isPaymentMethod, isWallet, PAYMENT_LABEL } from "@/lib/payments";
 import { normalizePhone } from "@/lib/phone";
 import { clientIpFrom } from "@/lib/client-ip";
+import { readCheckoutTiming } from "@/lib/checkout";
 import { logActivity } from "@/lib/activity";
 import { alertNewOrder } from "@/lib/notify";
 import { getMarketingConfig } from "@/lib/meta/config";
@@ -112,6 +113,7 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
 
   let placed: { no: string; orderId: number; count: number; total: number };
   try {
+    const timing = readCheckoutTiming(formData);
     placed = await transaction(async (conn) => {
       const ids = items.map((i) => i.id);
       // Prices and stock always come from the database, under a row lock.
@@ -130,13 +132,14 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
       const [res] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_label, shipping_charge, subtotal, total,
            payment_method, payment_status, payment_sender, payment_trx, source, district_id, thana_id, union_id,
-           ip_address, user_agent, fbp, fbc, event_source_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?, ?)`,
+           ip_address, user_agent, fbp, fbc, event_source_url, page_seconds, checkout_seconds)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [customer?.id ?? null, values.name, phone, fullAddress, values.note.slice(0, 1000) || null,
          inside ? "inside" : "outside", `${area.district}${inside ? " (inside)" : ""}`, shipping, subtotal, subtotal + shipping,
          method, method === "cod" ? "unpaid" : "pending_verification", sender, trx, districtId, thanaId, unionId,
          clientIpFrom(h), h.get("user-agent")?.slice(0, 300) ?? null,
-         jar.get("_fbp")?.value?.slice(0, 255) ?? null, jar.get("_fbc")?.value?.slice(0, 255) ?? null, h.get("referer")?.slice(0, 500) ?? null],
+         jar.get("_fbp")?.value?.slice(0, 255) ?? null, jar.get("_fbc")?.value?.slice(0, 255) ?? null, h.get("referer")?.slice(0, 500) ?? null,
+         timing.page, timing.checkout],
       );
       const orderId = res.insertId;
       const no = `FB${10000 + orderId}`;

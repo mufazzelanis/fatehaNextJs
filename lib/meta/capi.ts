@@ -89,10 +89,10 @@ async function postToPixel(config: MarketingConfig, pixel: PixelEntry, data: obj
 async function logEvent(e: ServerEvent, pixelId: string, result: SendResult, opts: { orderId?: number; isTest: boolean }) {
   try {
     await execute(
-      `INSERT INTO pixel_event_log (event_name, event_id, order_id, pixel_id, success, http_status, is_test, response, payload)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO pixel_event_log (event_name, event_id, order_id, pixel_id, success, http_status, is_test, response, payload, client_ip)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [e.event_name, e.event_id.slice(0, 100), opts.orderId ?? null, pixelId, result.ok ? 1 : 0, result.status,
-       opts.isTest ? 1 : 0, result.message.slice(0, 1000), result.ok ? null : JSON.stringify(e)],
+       opts.isTest ? 1 : 0, result.message.slice(0, 1000), result.ok ? null : JSON.stringify(e), e.user_data?.client_ip_address?.slice(0, 64) ?? null],
     );
   } catch (error) {
     console.error("pixel log failed", error);

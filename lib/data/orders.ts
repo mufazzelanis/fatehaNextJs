@@ -30,6 +30,8 @@ export type Order = {
   admin_note: string | null;
   ip_address: string | null;
   user_agent: string | null;
+  page_seconds: number | null;
+  checkout_seconds: number | null;
   fbp: string | null;
   fbc: string | null;
   event_source_url: string | null;
@@ -70,7 +72,18 @@ export type OrderFilters = {
   source?: string;
   method?: string;
   landing?: number;
+  /** Time of day the order was placed (Bangladesh time): "00-06" | "06-12" | "12-18" | "18-24" */
+  time?: string;
 };
+
+/** Six-hour slots of the day for the orders "time of day" filter. */
+export const TIME_SLOTS = [
+  { id: "00-06", label: "00–06", hint: "Late night", from: 0 },
+  { id: "06-12", label: "06–12", hint: "Morning", from: 6 },
+  { id: "12-18", label: "12–18", hint: "Afternoon", from: 12 },
+  { id: "18-24", label: "18–24", hint: "Evening", from: 18 },
+] as const;
+const timeSlot = (id?: string) => TIME_SLOTS.find((t) => t.id === id);
 
 function buildWhere(filters: OrderFilters) {
   const where: string[] = [];
@@ -108,6 +121,12 @@ function buildWhere(filters: OrderFilters) {
     where.push("o.payment_method = ?");
     params.push(filters.method);
   }
+  const slot = timeSlot(filters.time);
+  if (slot) {
+    // created_at is stored in Bangladesh time (see lib/db.ts), so HOUR() is the local hour.
+    where.push("HOUR(o.created_at) >= ? AND HOUR(o.created_at) < ?");
+    params.push(slot.from, slot.from + 6);
+  }
   return { sql: where.length ? `WHERE ${where.join(" AND ")}` : "", params };
 }
 
@@ -137,6 +156,17 @@ export async function exportOrders(filters: OrderFilters) {
      FROM orders o ${sql} ORDER BY o.id DESC LIMIT 10000`,
     params,
   );
+}
+
+/** How many orders (with every other filter applied) fall in each time-of-day slot. */
+export async function timeSlotCounts(filters: OrderFilters) {
+  const { sql, params } = buildWhere({ ...filters, time: "" });
+  const rows = await query<{ slot: number; count: number }>(
+    `SELECT FLOOR(HOUR(o.created_at) / 6) AS slot, COUNT(*) AS count FROM orders o ${sql} GROUP BY slot`, params,
+  );
+  const counts: Record<string, number> = {};
+  for (const t of TIME_SLOTS) counts[t.id] = Number(rows.find((r) => Number(r.slot) === t.from / 6)?.count ?? 0);
+  return counts;
 }
 
 export async function statusCounts() {

@@ -22,7 +22,22 @@ export default function PixelPage({ searchParams }: PageProps<"/admin/pixel">) {
 type LogRow = {
   id: number; event_name: string; event_id: string; order_id: number | null; order_no: string | null; pixel_id: string | null;
   success: number; http_status: number | null; is_test: number; retried: number; response: string | null; created_at: Date;
+  client_ip: string | null;
 };
+
+/** Each event type gets its own colour in the log, so a funnel (view → cart → checkout → purchase) is easy to follow. */
+const EVENT_STYLE: Record<string, string> = {
+  PageView: "bg-slate-100 text-slate-700 ring-slate-500/20",
+  ViewContent: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  AddToCart: "bg-amber-50 text-amber-800 ring-amber-600/25",
+  InitiateCheckout: "bg-violet-50 text-violet-700 ring-violet-600/20",
+  AddPaymentInfo: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+  Purchase: "bg-emerald-50 text-emerald-700 ring-emerald-600/25",
+  Lead: "bg-pink-50 text-pink-700 ring-pink-600/20",
+  CompleteRegistration: "bg-teal-50 text-teal-700 ring-teal-600/20",
+  Search: "bg-cyan-50 text-cyan-700 ring-cyan-600/20",
+};
+const eventStyle = (name: string) => EVENT_STYLE[name] ?? "bg-slate-50 text-slate-700 ring-slate-500/20";
 
 async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchParams">) {
   await requirePermission("marketing.manage");
@@ -52,7 +67,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     ),
     query<LogRow>(
       `SELECT l.id, l.event_name, l.event_id, l.order_id, l.pixel_id, l.success, l.http_status, l.is_test, l.retried, l.response, l.created_at,
-              o.order_no
+              COALESCE(l.client_ip, o.ip_address) client_ip, o.order_no
        FROM pixel_event_log l LEFT JOIN orders o ON o.id = l.order_id
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY l.id DESC LIMIT 80`,
       params,
@@ -228,7 +243,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
             text={config.capiEnabled ? "Events appear here as visitors browse and order." : "Turn on the Conversions API to start sending events."} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-sm">
+            <table className="w-full min-w-[980px] text-sm">
               <thead className="bg-slate-50/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-2.5 font-medium">Time</th>
@@ -236,6 +251,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                   <th className="px-3 py-2.5 font-medium">Pixel</th>
                   <th className="px-3 py-2.5 font-medium">Order</th>
                   <th className="px-3 py-2.5 font-medium">Result</th>
+                  <th className="px-3 py-2.5 font-medium">IP</th>
                   <th className="px-5 py-2.5 font-medium">Facebook response</th>
                 </tr>
               </thead>
@@ -244,9 +260,9 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                   <tr key={r.id}>
                     <td className="whitespace-nowrap px-5 py-2.5 text-slate-500">{dateTime(r.created_at)}</td>
                     <td className="px-3 py-2.5">
-                      <span className="font-medium text-slate-900">{r.event_name}</span>
+                      <span className={`inline-flex rounded-md px-2 py-0.5 text-[13px] font-semibold ring-1 ring-inset ${eventStyle(r.event_name)}`}>{r.event_name}</span>
                       {!!r.is_test && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">Test</span>}
-                      <p className="max-w-52 truncate font-mono text-[11px] text-slate-400" title={r.event_id}>{r.event_id}</p>
+                      <p className="mt-1 max-w-52 truncate font-mono text-[11px] text-slate-400" title={r.event_id}>{r.event_id}</p>
                     </td>
                     <td className="px-3 py-2.5 text-xs">
                       {r.pixel_id ? <><span className="text-slate-700">{pixelLabel.get(r.pixel_id) || "—"}</span><p className="font-mono text-slate-400">{r.pixel_id}</p></> : <span className="text-slate-300">—</span>}
@@ -261,6 +277,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                       </span>
                       {!r.success && !!r.retried && <p className="mt-0.5 text-[11px] text-slate-400">retried</p>}
                     </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs text-slate-600">{r.client_ip || <span className="text-slate-300">—</span>}</td>
                     <td className="max-w-80 px-5 py-2.5 text-xs text-slate-500"><p className="line-clamp-2" title={r.response ?? ""}>{r.response}</p></td>
                   </tr>
                 ))}

@@ -7,6 +7,7 @@ import type { CheckoutConfig, CustomField } from "@/lib/checkout";
 import { Spinner } from "../form-bits";
 import { track } from "@/lib/meta/pixel-client";
 import { sized } from "@/lib/media";
+import { CheckoutTimer } from "../checkout-timer";
 
 type Props = {
   product: { id: number; name: string; weight: string | null; price: number; image: string; stock: number };
@@ -91,6 +92,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
     <form action={preview ? undefined : formAction} onSubmit={preview ? (e) => e.preventDefault() : undefined}
       onFocus={onFormFocus} noValidate className="grid gap-x-10 gap-y-8 font-ui text-[#2d3748] md:grid-cols-[1.08fr_0.92fr]">
       <input type="hidden" name="landing" value={landingId} />
+      {!preview && <CheckoutTimer />}
       <input type="hidden" name="zone" value={zone?.id ?? ""} />
       <input type="hidden" name="quantity" value={quantity} />
 

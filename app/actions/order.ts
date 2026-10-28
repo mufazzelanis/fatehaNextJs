@@ -14,6 +14,7 @@ import { revalidateStock } from "@/lib/data/catalog";
 import { alertNewOrder } from "@/lib/notify";
 import { logActivity } from "@/lib/activity";
 import { clientIpFrom } from "@/lib/client-ip";
+import { readCheckoutTiming } from "@/lib/checkout";
 import { getOrderByNo } from "@/lib/data/orders";
 import { normalizePhone } from "@/lib/phone";
 import { bn, STATUS_META, type OrderStatus } from "@/lib/format";
@@ -98,6 +99,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
 
   let placed: { no: string; orderId: number };
   try {
+    const timing = readCheckoutTiming(formData);
     placed = await transaction(async (conn) => {
       // Price and stock always come from the database, never from the browser.
       const [productRows] = await conn.query<(Product & RowDataPacket)[]>(
@@ -111,11 +113,12 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
       const subtotal = Number(product.price) * quantity;
       const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_charge,
-                             subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, shipping_label, custom_fields, source, landing_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'landing', ?)`,
+                             subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, shipping_label, custom_fields, source, landing_id,
+                             page_seconds, checkout_seconds)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'landing', ?, ?, ?)`,
         [customer?.id ?? null, values.name, phone, values.address, values.note.slice(0, 1000) || null,
          zone.id, shipping, subtotal, subtotal + shipping, ip, userAgent, fbp, fbc, sourceUrl,
-         zone.label, customFields.length ? JSON.stringify(customFields) : null, landing.id],
+         zone.label, customFields.length ? JSON.stringify(customFields) : null, landing.id, timing.page, timing.checkout],
       );
       const orderId = result.insertId;
       const no = `${landing.order_prefix || "DC"}${10000 + orderId}`;

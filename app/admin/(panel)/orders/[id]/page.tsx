@@ -139,6 +139,16 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
                 {landing && <a href={`/${landing.slug}`} target="_blank" className="font-mono text-xs text-slate-400 hover:text-brand-700">/{landing.slug}</a>}
               </p>
             )}
+            {order.checkout_seconds !== null && (
+              <p className="mb-4 flex flex-wrap items-center gap-1.5 text-sm">
+                <span className="text-slate-500">Checkout time:</span>
+                <span className={`rounded-md px-2 py-0.5 font-semibold tabular-nums ${order.checkout_seconds < 20 ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-800"}`}>
+                  {duration(order.checkout_seconds)}
+                </span>
+                {order.page_seconds !== null && <span className="text-xs text-slate-400">· {duration(order.page_seconds)} on the page</span>}
+                {order.checkout_seconds < 20 && <span className="text-xs font-medium text-amber-700">very fast — confirm by phone</span>}
+              </p>
+            )}
             {area && (
               <p className="mb-4 flex flex-wrap items-center gap-1.5 text-sm">
                 <span className="text-slate-500">Area:</span>
@@ -240,7 +250,8 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
 
           <section className="a-card p-5 text-xs text-slate-500">
             <h2 className="mb-2 text-sm font-medium text-slate-900">Technical</h2>
-            <p>IP: <span className="font-mono">{order.ip_address ?? "—"}</span></p>
+            <CheckoutTime page={order.page_seconds} form={order.checkout_seconds} />
+            <p className="mt-3">IP: <span className="font-mono">{order.ip_address ?? "—"}</span></p>
             <p className="mt-1 break-all">Device: {order.user_agent ?? "—"}</p>
             <p className="mt-1">Account: {order.user_id ? `Registered customer #${order.user_id}` : "Guest checkout"}</p>
             <p className="mt-1">Facebook click ID: {order.fbc ? "yes (from ad)" : "—"} · Browser ID: {order.fbp ? "yes" : "—"}</p>
@@ -263,3 +274,33 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
   );
 }
 
+/** "7m 40s" style duration. */
+function duration(sec: number) {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m ${sec % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+/** How long the customer took — a very fast checkout is a common sign of a fake or automated order. */
+function CheckoutTime({ page, form }: { page: number | null; form: number | null }) {
+  if (page === null && form === null) return <p>Checkout time: <span className="text-slate-400">not recorded (older order)</span></p>;
+  const fast = form !== null && form < 20;
+  return (
+    <div className={`rounded-lg p-3 ring-1 ring-inset ${fast ? "bg-amber-50 ring-amber-200" : "bg-slate-50 ring-slate-200"}`}>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-slate-500">Checkout time</p>
+          <p className={`text-lg font-semibold tabular-nums ${fast ? "text-amber-700" : "text-slate-900"}`}>{form !== null ? duration(form) : "—"}</p>
+          <p className="text-[11px] text-slate-400">form start → order</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-slate-500">Time on page</p>
+          <p className="text-lg font-semibold tabular-nums text-slate-900">{page !== null ? duration(page) : "—"}</p>
+          <p className="text-[11px] text-slate-400">page open → order</p>
+        </div>
+      </div>
+      {fast && <p className="mt-2 text-[11px] font-medium text-amber-800">Very fast checkout — call to confirm before shipping.</p>}
+    </div>
+  );
+}

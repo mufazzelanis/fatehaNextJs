@@ -140,3 +140,12 @@ export function normalizeCheckout(raw: unknown, legacy?: { inside?: number; outs
     showTotalOnButton: r.showTotalOnButton !== false,
   };
 }
+
+/** Seconds sent by <CheckoutTimer> (time on page, time filling the form); anything odd becomes null. */
+export function readCheckoutTiming(formData: FormData) {
+  const sec = (k: string) => {
+    const n = Number(formData.get(k));
+    return Number.isFinite(n) && n > 0 && n <= 86_400 ? Math.round(n) : null;
+  };
+  return { page: sec("t_page"), checkout: sec("t_form") };
+}

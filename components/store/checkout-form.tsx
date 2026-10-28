@@ -9,6 +9,7 @@ import { isWallet, PAYMENT_LABEL, type PaymentConfig, type PaymentMethod } from 
 import { syncCart, useCart } from "./cart-store";
 import { track } from "@/lib/meta/pixel-client";
 import { sized } from "@/lib/media";
+import { CheckoutTimer } from "../checkout-timer";
 import { Spinner } from "../form-bits";
 import { BagIcon, CashIcon, CheckIcon, LockIcon, ShieldIcon } from "../icons";
 
@@ -112,6 +113,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
 
   return (
     <form action={action} noValidate className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px] lg:gap-8">
+      <CheckoutTimer />
       <input type="hidden" name="items" value={JSON.stringify(items.map((i) => ({ id: i.id, qty: i.qty })))} />
       <input type="hidden" name="payment" value={method} />
 

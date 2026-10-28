@@ -115,6 +115,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS pixel_purchase_sent_at DATETIME NULL
 ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS pixel_id VARCHAR(20) NULL;
 ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS payload TEXT NULL;
 ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS retried TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pixel_event_log ADD COLUMN IF NOT EXISTS client_ip VARCHAR(64) NULL;
 
 -- Staff roles & permissions
 CREATE TABLE IF NOT EXISTS roles (
@@ -319,3 +320,7 @@ CREATE TABLE IF NOT EXISTS message_log (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at DATETIME NULL;
 ALTER TABLE dealers ADD COLUMN IF NOT EXISTS phone_verified_at DATETIME NULL;
+
+-- How long the customer took to order (seconds): since opening the page, and since first touching the form
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS page_seconds INT UNSIGNED NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS checkout_seconds INT UNSIGNED NULL;

@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     source: sp.get("source") ?? undefined,
     landing: Number(sp.get("landing")) || undefined,
     method: sp.get("method") ?? undefined,
+    time: sp.get("time") ?? undefined,
   });
 
   await logActivity({ actor: admin, action: "order.exported", module: "orders", description: `Exported ${rows.length} order(s) to CSV` });

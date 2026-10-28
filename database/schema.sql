@@ -324,3 +324,18 @@ ALTER TABLE dealers ADD COLUMN IF NOT EXISTS phone_verified_at DATETIME NULL;
 -- How long the customer took to order (seconds): since opening the page, and since first touching the form
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS page_seconds INT UNSIGNED NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS checkout_seconds INT UNSIGNED NULL;
+
+-- Live visitors on landing pages (one row per browser + landing; heartbeats every ~15s, kept 2 days)
+CREATE TABLE IF NOT EXISTS live_visitors (
+  sid         CHAR(24)     NOT NULL,
+  landing_id  INT UNSIGNED NOT NULL,
+  section     VARCHAR(10)  NOT NULL DEFAULT 'top',
+  source      VARCHAR(12)  NOT NULL DEFAULT 'direct',
+  device      VARCHAR(8)   NOT NULL DEFAULT 'phone',
+  first_seen  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  left_at     DATETIME     NULL,
+  PRIMARY KEY (sid, landing_id),
+  INDEX idx_live_seen (last_seen),
+  INDEX idx_live_first (first_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

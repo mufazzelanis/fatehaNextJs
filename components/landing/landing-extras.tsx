@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PhoneIcon, WhatsappIcon } from "../icons";
+import { useLiveHeartbeat } from "./use-live-heartbeat";
 
 type OrderBar = { text: string; price: string; backgroundColor: string; color: string };
 
@@ -11,6 +12,7 @@ type OrderBar = { text: string; price: string; backgroundColor: string; color: s
  */
 export function LandingExtras({ landingId, preview, phone, whatsapp, orderBar }: { landingId: number; preview: boolean; phone: string; whatsapp: string; orderBar?: OrderBar }) {
   const [showBar, setShowBar] = useState(false);
+  useLiveHeartbeat(landingId, !preview);
   useEffect(() => {
     if (!orderBar) return;
     const form = document.getElementById("order");

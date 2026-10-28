@@ -12,6 +12,8 @@ import { dateTime, money, ORDER_STATUSES, STATUS_META } from "@/lib/format";
 import { PageHeader, PanelSkeleton, StatusBadge, EmptyState } from "@/components/admin/ui";
 import { TrendChart } from "@/components/admin/trend-chart";
 import { RangeFilter } from "@/components/admin/range-filter";
+import { LiveVisitors } from "@/components/admin/live-visitors";
+import { getLiveStats } from "@/lib/data/live";
 import { AlertIcon, ArrowRightIcon, BagIcon, BoxIcon, CashIcon, CheckCircleIcon, ClockIcon, RefreshIcon, TargetIcon, UsersIcon } from "@/components/icons";
 
 export const metadata = { title: "Dashboard" };
@@ -64,7 +66,7 @@ async function Dashboard({ searchParams }: PageProps<"/admin">) {
   const r = resolveRange(key, { from, to, firstOrder: key === "all" ? await getFirstOrderDate() : null });
   const cmp = r.prev?.label ?? null;
 
-  const [d, lowStock, own] = await Promise.all([
+  const [d, lowStock, own, live] = await Promise.all([
     getDashboardPeriod(r),
     // Products of live landing pages + store products that are about to run out.
     query<{ id: number; name: string; stock: number; landing: string | null }>(
@@ -72,6 +74,7 @@ async function Dashboard({ searchParams }: PageProps<"/admin">) {
        WHERE p.is_active = 1 AND ((l.id IS NOT NULL AND p.stock <= 20) OR (p.in_store = 1 AND p.stock <= 5)) GROUP BY p.id ORDER BY p.stock LIMIT 5`,
     ),
     queryOne<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", [admin.id]),
+    getLiveStats(),
   ]);
   // The setup script's demo password must never stay in production.
   const defaultPassword = !!own && (await bcrypt.compare("admin12345", own.password_hash));
@@ -99,6 +102,8 @@ async function Dashboard({ searchParams }: PageProps<"/admin">) {
       <PageHeader title="Dashboard" description="Pick a period — every number, chart and list below follows it." actions={
         <Link href={ordersLink()} className="a-btn">View these orders <ArrowRightIcon className="size-4" /></Link>
       } />
+
+      <LiveVisitors initial={live} />
 
       <RangeFilter current={r.key} from={r.from} to={r.to} display={r.display} compare={cmp} />
 

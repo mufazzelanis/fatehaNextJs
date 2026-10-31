@@ -1,31 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Anek_Bangla, Geist, Hind_Siliguri } from "next/font/google";
+// Fonts ship with the app (@fontsource) instead of being fetched from Google at build time, so a build never
+// depends on Google's response format. Each font is split by script (Bengali / Latin) with unicode-range,
+// so a page downloads only the parts it actually shows.
+import "@fontsource/hind-siliguri/400.css";
+import "@fontsource/hind-siliguri/500.css";
+import "@fontsource/hind-siliguri/600.css";
+import "@fontsource/hind-siliguri/700.css";
+import "@fontsource/anek-bangla/500.css";
+import "@fontsource/anek-bangla/600.css";
+import "@fontsource/anek-bangla/700.css";
+import "@fontsource/anek-bangla/800.css";
+import "@fontsource-variable/geist/wght.css";
 import { Suspense } from "react";
 import { getPublicPixelConfig } from "@/lib/meta/config";
 import { MetaPixel } from "@/components/meta/meta-pixel";
 import "./globals.css";
-
-const hind = Hind_Siliguri({
-  variable: "--font-hind",
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  // Bangla fonts are big — the browser fetches them only on pages that show Bangla text (unicode-range), not on every page.
-  preload: false,
-});
-
-const anek = Anek_Bangla({
-  variable: "--font-anek",
-  subsets: ["bengali", "latin"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-  preload: false,
-});
-
-const geist = Geist({
-  variable: "--font-geist",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   // Absolute links for Facebook/Google previews (set SITE_URL in production, e.g. https://fatehabd.com).
@@ -44,7 +33,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const pixel = await getPublicPixelConfig();
   return (
-    <html lang="bn" suppressHydrationWarning className={`${hind.variable} ${anek.variable} ${geist.variable} h-full antialiased`}>
+    <html lang="bn" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
         {children}
         {pixel && (

@@ -17,9 +17,9 @@
 }
 
 @theme {
-  --font-sans: var(--font-hind), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-anek), var(--font-hind), ui-sans-serif, system-ui, sans-serif;
-  --font-ui: var(--font-geist), var(--font-hind), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hind Siliguri", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Anek Bangla", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+  --font-ui: "Geist Variable", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
 
   --color-brand-50: #ecfdf3;
   --color-brand-100: #d1fae1;

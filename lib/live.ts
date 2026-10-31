@@ -15,7 +15,13 @@ export const SECTION_LABEL: Record<LiveSection, string> = { top: "Top of page", 
 export const SOURCE_LABEL: Record<LiveSource, string> = { facebook: "Facebook / Instagram", google: "Google", other: "Other sites", direct: "Direct / unknown" };
 export const DEVICE_LABEL: Record<LiveDevice, string> = { phone: "Phone", tablet: "Tablet", desktop: "Computer" };
 
-export type LiveEvent = { kind: "arrived" | "left"; at: string; landing: string; source: LiveSource; device: LiveDevice };
+export type LiveEvent = { kind: "arrived" | "left"; at: string; landing: string; source: LiveSource; device: LiveDevice; ip: string | null };
+
+/** One person on a landing page right now (Live Visitors table). */
+export type LiveVisitor = {
+  id: number; ip: string | null; ipVisits: number; userAgent: string | null; source: LiveSource; device: LiveDevice;
+  landing: string; section: LiveSection; reachedForm: boolean; clicks: number; startedAt: string; ordered: boolean;
+};
 
 export type LiveStats = {
   /** Server time the numbers were taken (ISO). */
@@ -28,9 +34,19 @@ export type LiveStats = {
   /** Visits that started / ended in the last 5 minutes. */
   arrived5: number;
   left5: number;
-  /** Unique visits today (Bangladesh time). */
+  /** Visits today (Bangladesh time). */
   today: number;
   /** People here at each of the last 30 minutes (oldest first). */
   series: number[];
   feed: LiveEvent[];
+  /** Everyone here now, longest visit first (up to 100). */
+  active: LiveVisitor[];
 };
+
+/** "7m 05s" style duration. */
+export function duration(sec: number) {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m ${String(sec % 60).padStart(2, "0")}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}

@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { HEARTBEAT_MS, type LiveDevice, type LiveSection, type LiveSource } from "@/lib/live";
 
-function visitorId() {
+/** Same id the checkout form sends with an order, so a visit can be linked to the order it produced. */
+export function visitorId() {
   try {
     let id = localStorage.getItem("fb_vid");
     if (!id || !/^[a-z0-9]{12,24}$/.test(id)) {
@@ -35,9 +36,9 @@ function deviceType(): LiveDevice {
 }
 
 /**
- * Tells the server this landing page is open (for the admin "live visitors" card):
+ * Tells the server this landing page is open (admin "Live Visitors"):
  * a heartbeat every 15s while the tab is visible, an update when the visitor reaches the order form,
- * and a goodbye when the page is hidden or closed.
+ * every click on an element marked data-track="order|sticky|submit|call|whatsapp", and a goodbye when the page is hidden or closed.
  */
 export function useLiveHeartbeat(landingId: number, enabled: boolean) {
   useEffect(() => {
@@ -49,8 +50,8 @@ export function useLiveHeartbeat(landingId: number, enabled: boolean) {
     let atForm = false;
     let section: LiveSection = "top";
 
-    const send = (leave = false) => {
-      const body = JSON.stringify(leave ? { id: landingId, sid, leave: 1 } : { id: landingId, sid, s: section, src, dev });
+    const send = (leave = false, click?: { label: string; kind: string }) => {
+      const body = JSON.stringify(leave ? { id: landingId, sid, leave: 1 } : { id: landingId, sid, s: section, src, dev, ...(click ? { click: click.label, kind: click.kind } : {}) });
       // sendBeacon survives the page closing; text/plain avoids a CORS preflight.
       if (!navigator.sendBeacon?.("/api/live", new Blob([body], { type: "text/plain" }))) {
         fetch("/api/live", { method: "POST", body, keepalive: true }).catch(() => {});
@@ -67,6 +68,13 @@ export function useLiveHeartbeat(landingId: number, enabled: boolean) {
     let scrollTimer = 0;
     const onScroll = () => { window.clearTimeout(scrollTimer); scrollTimer = window.setTimeout(onMove, 400); };
     window.addEventListener("scroll", onScroll, { passive: true });
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest<HTMLElement>("[data-track]");
+      if (!el) return;
+      const label = (el.getAttribute("aria-label") || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80) || el.dataset.track!;
+      send(false, { label, kind: el.dataset.track! });
+    };
+    document.addEventListener("click", onClick, true);
 
     let beat = 0;
     const start = () => { window.clearInterval(beat); section = currentSection(); send(); beat = window.setInterval(() => send(), HEARTBEAT_MS); };
@@ -81,6 +89,7 @@ export function useLiveHeartbeat(landingId: number, enabled: boolean) {
       io?.disconnect();
       window.clearTimeout(scrollTimer);
       window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("click", onClick, true);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", stop);
     };

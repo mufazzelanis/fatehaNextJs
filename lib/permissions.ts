@@ -79,6 +79,7 @@ export const PERMISSION_LABEL: Record<string, string> = Object.fromEntries(
 /** Which permission each admin page needs (used for the menu and page guards). */
 export const PAGE_PERMISSION: Record<string, Permission> = {
   "/admin": "dashboard.view",
+  "/admin/live-visitors": "dashboard.view",
   "/admin/orders": "orders.view",
   "/admin/customers": "customers.view",
   "/admin/products": "products.manage",

@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 export function CheckoutTimer() {
   const page = useRef<HTMLInputElement>(null);
   const form = useRef<HTMLInputElement>(null);
+  const visitor = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const root = page.current?.form;
@@ -18,6 +19,9 @@ export function CheckoutTimer() {
       const now = performance.now();
       if (page.current) page.current.value = String(Math.round(now / 1000));
       if (form.current && started !== null) form.current.value = String(Math.round((now - started) / 1000));
+      // Landing-page visitor id (created by the live-visitors heartbeat, maybe a moment after this form mounts),
+      // so the order can be tied to the visit that produced it.
+      try { if (visitor.current) visitor.current.value = localStorage.getItem("fb_vid") ?? ""; } catch {}
     };
     const onFirstTouch = () => {
       if (started === null) started = performance.now();
@@ -38,6 +42,7 @@ export function CheckoutTimer() {
     <>
       <input ref={page} type="hidden" name="t_page" defaultValue="" />
       <input ref={form} type="hidden" name="t_form" defaultValue="" />
+      <input ref={visitor} type="hidden" name="vid" defaultValue="" />
     </>
   );
 }

@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, t
 import { createPortal } from "react-dom";
 import {
   BagIcon, BellIcon, BoxIcon, BriefcaseIcon, CartIcon, ChevronDownIcon, ChevronsLeftIcon, ClockIcon, EditIcon, ExternalIcon, GridIcon, MenuIcon,
-  PanelLeftIcon, PrinterIcon, SearchIcon, SettingsIcon, ShieldIcon, StoreIcon, TagIcon, TargetIcon, UserIcon, UsersIcon, WalletIcon, XIcon,
+  PanelLeftIcon, PrinterIcon, PulseIcon, SearchIcon, SettingsIcon, ShieldIcon, StoreIcon, TagIcon, TargetIcon, UserIcon, UsersIcon, WalletIcon, XIcon,
 } from "../icons";
 
 type NavItem = { href: string; label: string; short: string; icon: typeof GridIcon; exact?: boolean; group: string; keywords?: string };
@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: "/admin/categories", label: "Categories", short: "Categories", icon: TagIcon, group: "Main site", keywords: "category" },
   { href: "/admin/storefront", label: "Main Site Settings", short: "Site", icon: StoreIcon, group: "Main site", keywords: "storefront banner slider button color delivery charge announcement" },
   { href: "/admin/payments", label: "Payments", short: "Payments", icon: WalletIcon, group: "Main site", keywords: "bkash nagad rocket bank cod payment" },
+  { href: "/admin/live-visitors", label: "Live Visitors", short: "Live", icon: PulseIcon, group: "Landing pages", keywords: "live realtime visitors traffic online now peak time click ip" },
   { href: "/admin/landings", label: "Landing Pages", short: "Landings", icon: EditIcon, group: "Landing pages", keywords: "landing page url content checkout form" },
   { href: "/admin/landing-settings", label: "Landing Settings", short: "Landing", icon: CartIcon, group: "Landing pages", keywords: "landing footer whatsapp call prefix" },
   { href: "/admin/notifications", label: "Email, SMS & OTP", short: "Notify", icon: BellIcon, group: "System", keywords: "smtp email sms otp gateway bulksms alert two factor 2fa sign-in code" },
@@ -71,7 +72,7 @@ function toggleGroup(g: string) {
 }
 const useClosedGroups = () => useSyncExternalStore(groupsStore.subscribe, groupsStore.get, groupsStore.server);
 
-type Badge = { count: number; tone: "rose" | "amber" | "slate"; title: string };
+type Badge = { count: number; tone: "rose" | "amber" | "slate" | "live"; title: string };
 const NO_BADGES: Record<string, Badge> = {};
 const badgeStore = createStore<Record<string, Badge>>(() => NO_BADGES, NO_BADGES);
 let lastFetch = 0;
@@ -83,13 +84,13 @@ async function refreshBadges(force = false) {
     if (r.ok) badgeStore.set(await r.json());
   } catch {}
 }
-/** Counts refresh on every page change, every minute and when the tab comes back into view. */
+/** Counts refresh on every page change, every 15 seconds (live visitors) and when the tab comes back into view. */
 function useBadges() {
   const pathname = usePathname();
   const badges = useSyncExternalStore(badgeStore.subscribe, badgeStore.get, badgeStore.server);
   useEffect(() => { refreshBadges(); }, [pathname]);
   useEffect(() => {
-    const t = setInterval(() => { if (!document.hidden) refreshBadges(true); }, 60_000);
+    const t = setInterval(() => { if (!document.hidden) refreshBadges(true); }, 15_000);
     const onVis = () => { if (!document.hidden) refreshBadges(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
@@ -101,6 +102,7 @@ const TONE = {
   rose: "bg-rose-500 text-white",
   amber: "bg-amber-400 text-amber-950",
   slate: "bg-white/20 text-white",
+  live: "bg-emerald-400 text-emerald-950 animate-pulse",
 } as const;
 
 const norm = (s: string) => s.toLowerCase().trim();

@@ -6,7 +6,7 @@ import { getMarketingConfig } from "@/lib/meta/config";
 import { sendPurchaseForOrder } from "@/lib/meta/capi";
 import { redirect } from "next/navigation";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { queryOne, transaction } from "@/lib/db";
+import { execute, queryOne, transaction } from "@/lib/db";
 import { getCustomer } from "@/lib/auth";
 import type { Product } from "@/lib/data/store";
 import { readLanding, readLandingSettings } from "@/lib/data/landings";
@@ -142,6 +142,14 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   }
 
   revalidateStock();
+  // Tie the order to the visit that produced it (Live Visitors: conversion, "ordered" in the visit list).
+  const vid = String(formData.get("vid") ?? "");
+  if (/^[a-z0-9]{12,24}$/.test(vid)) {
+    await execute(
+      "UPDATE landing_visits SET order_id = ? WHERE sid = ? AND landing_id = ? AND order_id IS NULL ORDER BY id DESC LIMIT 1",
+      [placed.orderId, vid, landing.id],
+    ).catch(() => {});
+  }
   await logActivity({
     action: "order.created", module: "orders", entityType: "order", entityId: placed.orderId,
     description: `New order #${placed.no} from ${values.name} (${phone}) — ${quantity} item(s), ${zone.label} · landing “${landing.name}”`,

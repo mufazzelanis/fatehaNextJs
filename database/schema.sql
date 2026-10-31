@@ -327,17 +327,39 @@ ALTER TABLE dealers ADD COLUMN IF NOT EXISTS phone_verified_at DATETIME NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS page_seconds INT UNSIGNED NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS checkout_seconds INT UNSIGNED NULL;
 
--- Live visitors on landing pages (one row per browser + landing; heartbeats every ~15s, kept 2 days)
-CREATE TABLE IF NOT EXISTS live_visitors (
-  sid         CHAR(24)     NOT NULL,
+-- Landing-page visits (one row per visit; heartbeats every ~15s keep it open). Kept 90 days.
+-- Replaces the short-lived live_visitors table (2-day live data only).
+DROP TABLE IF EXISTS live_visitors;
+CREATE TABLE IF NOT EXISTS landing_visits (
+  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  sid          CHAR(24)     NOT NULL,
+  landing_id   INT UNSIGNED NOT NULL,
+  ip           VARCHAR(64)  NULL,
+  user_agent   VARCHAR(300) NULL,
+  source       VARCHAR(12)  NOT NULL DEFAULT 'direct',
+  device       VARCHAR(8)   NOT NULL DEFAULT 'phone',
+  section      VARCHAR(10)  NOT NULL DEFAULT 'top',
+  reached_form TINYINT(1)   NOT NULL DEFAULT 0,
+  clicks       INT UNSIGNED NOT NULL DEFAULT 0,
+  order_id     INT UNSIGNED NULL,
+  started_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  left_at      DATETIME     NULL,
+  INDEX idx_visit_sid (sid, landing_id, id),
+  INDEX idx_visit_started (started_at),
+  INDEX idx_visit_seen (last_seen),
+  INDEX idx_visit_ip (ip, started_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Order / checkout button clicks on landing pages (kept 90 days)
+CREATE TABLE IF NOT EXISTS landing_clicks (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  visit_id    BIGINT UNSIGNED NULL,
   landing_id  INT UNSIGNED NOT NULL,
-  section     VARCHAR(10)  NOT NULL DEFAULT 'top',
-  source      VARCHAR(12)  NOT NULL DEFAULT 'direct',
-  device      VARCHAR(8)   NOT NULL DEFAULT 'phone',
-  first_seen  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_seen   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  left_at     DATETIME     NULL,
-  PRIMARY KEY (sid, landing_id),
-  INDEX idx_live_seen (last_seen),
-  INDEX idx_live_first (first_seen)
+  label       VARCHAR(80)  NOT NULL,
+  kind        VARCHAR(12)  NOT NULL DEFAULT 'order',
+  seconds     INT UNSIGNED NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_click_created (created_at),
+  INDEX idx_click_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

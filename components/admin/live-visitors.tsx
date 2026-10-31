@@ -109,6 +109,7 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
               <span className={`relative inline-flex size-2.5 rounded-full ${offline ? "bg-amber-400" : "bg-emerald-400"}`} />
             </span>
             {offline ? "Reconnecting…" : "Live · landing pages"}
+            <Link href="/admin/live-visitors" className="ml-auto rounded-full bg-white/10 px-2.5 py-1 text-[10px] tracking-wider text-white ring-1 ring-white/20 transition hover:bg-white/20">Open live page →</Link>
           </div>
           <div className="mt-3 flex items-end gap-3">
             <p className="text-6xl font-bold leading-none tabular-nums tracking-tight" aria-live="polite">{data.total}</p>

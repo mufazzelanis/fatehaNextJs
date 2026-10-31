@@ -232,7 +232,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
           </p>
         )}
 
-        <button type="submit" disabled={pending || outOfStock}
+        <button type="submit" data-track="submit" disabled={pending || outOfStock}
           style={{ backgroundColor: config.buttonColor }}
           className="mt-4 flex min-h-[64px] w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 font-sans text-[21px] font-bold text-white shadow-lg transition hover:brightness-95 active:scale-[0.99] disabled:opacity-70 sm:mt-3 sm:min-h-0 sm:rounded-[3px] sm:py-[11px] sm:text-[15px] sm:shadow-sm">
           {pending ? <><Spinner className="size-5 sm:size-4" /> অর্ডার হচ্ছে...</> : outOfStock ? "স্টক শেষ"

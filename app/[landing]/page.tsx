@@ -18,7 +18,7 @@ import { ViewContentEvent } from "@/components/meta/meta-pixel";
 /** Large, thumb-friendly order button: full width on phones, with a soft moving shine so it is easy to spot. */
 function OrderButton({ color, text }: { color: string; text: string }) {
   return (
-    <a href="#order"
+    <a href="#order" data-track="order"
       className="group relative mx-auto flex w-full max-w-[380px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl px-6 py-4 text-[20px] font-bold leading-tight shadow-[0_8px_20px_-6px_rgb(0_0_0/0.35)] ring-4 ring-white/70 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] sm:inline-flex sm:w-auto sm:rounded-[14px] sm:px-8 sm:py-3.5 sm:text-[18px]"
       style={readableButton(color)}>
       <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shine bg-linear-to-r from-transparent via-white/35 to-transparent motion-reduce:hidden" />

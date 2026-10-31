@@ -8,7 +8,7 @@ import { dateTime } from "@/lib/format";
 import { EmptyState, PageHeader, Pagination, PanelSkeleton } from "@/components/admin/ui";
 import { EVENT_NAMES } from "@/lib/meta/shared";
 import { TIME_SLOTS } from "@/lib/data/orders";
-import { DEVICE_KIND_LABEL, parseDevice } from "@/lib/device";
+import { DEVICE_FILTER_LABEL, DEVICE_FILTERS, DEVICE_KIND_LABEL, deviceKindSql, parseDevice, type DeviceFilter } from "@/lib/device";
 import { ClockIcon } from "@/components/icons";
 import { EventsChart, type DayCount } from "./events-chart";
 import { PixelSettingsForm, RetryButton, TestEventForm, VerifyPanel } from "./pixel-forms";
@@ -30,6 +30,10 @@ type LogRow = {
 };
 
 const LOG_PER_PAGE = 50;
+// The visitor's IP / browser: stored on the event, or (older Purchase rows) taken from the order.
+const IP = "COALESCE(l.client_ip, o.ip_address)";
+const UA = "COALESCE(l.client_ua, o.user_agent)";
+const LOG_FROM = "FROM pixel_event_log l LEFT JOIN orders o ON o.id = l.order_id";
 const LOG_DAYS = 30;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** "YYYY-MM-DD" in Bangladesh time, `back` days ago. */
@@ -75,6 +79,8 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
   const toDate = DAY.test(one("to")) ? one("to") : "";
   const timeSlot = TIME_SLOTS.find((t) => t.id === one("time"));
   const page = Math.max(Number(one("page")) || 1, 1);
+  const ipFilter = /^[0-9a-fA-F.:]{2,45}$/.test(one("ip").trim()) ? one("ip").trim() : "";
+  const deviceFilter = (DEVICE_FILTERS as readonly string[]).includes(one("device")) ? (one("device") as DeviceFilter) : "";
   const config = await getMarketingConfig();
   // While testing, count test events too so the numbers move; otherwise only real traffic.
   const testFilter = config.testEventCode ? "1 = 1" : "is_test = 0";
@@ -93,6 +99,13 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     where.push("HOUR(l.created_at) >= ? AND HOUR(l.created_at) < ?");
     params.push(timeSlot.from, timeSlot.from + 6);
   }
+  if (ipFilter) {
+    // A full address matches exactly; a partial one ("103.88.") matches every IP that starts with it.
+    where.push(`(${IP} = ? OR ${IP} LIKE ?)`);
+    params.push(ipFilter, `${ipFilter.replace(/[%_]/g, "")}%`);
+  }
+  if (deviceFilter === "human") where.push(`${deviceKindSql(UA)} <> 'bot'`);
+  else if (deviceFilter) { where.push(`${deviceKindSql(UA)} = ?`); params.push(deviceFilter); }
   const whereSql = `WHERE ${where.join(" AND ")}`;
 
   const [stats, byEvent, rows, retryable, daily, unsent, logCount] = await Promise.all([
@@ -106,7 +119,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     query<LogRow>(
       `SELECT l.id, l.event_name, l.event_id, l.order_id, l.pixel_id, l.success, l.http_status, l.is_test, l.retried, l.response, l.created_at,
               COALESCE(l.client_ip, o.ip_address) client_ip, COALESCE(l.client_ua, o.user_agent) client_ua, o.order_no
-       FROM pixel_event_log l LEFT JOIN orders o ON o.id = l.order_id
+       ${LOG_FROM}
        ${whereSql} ORDER BY l.created_at DESC, l.id DESC LIMIT ? OFFSET ?`,
       [...params, LOG_PER_PAGE, (page - 1) * LOG_PER_PAGE],
     ),
@@ -121,11 +134,25 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
       `SELECT COUNT(*) count FROM orders WHERE pixel_purchase_sent_at IS NULL AND status NOT IN ('cancelled','returned')
        AND created_at >= NOW() - INTERVAL 7 DAY`,
     ),
-    queryOne<{ count: number }>(`SELECT COUNT(*) count FROM pixel_event_log l ${whereSql}`, params),
+    queryOne<{ count: number; visitors: number; bots: number }>(
+      `SELECT COUNT(*) count, COUNT(DISTINCT ${IP}) visitors, COALESCE(SUM(${deviceKindSql(UA)} = 'bot'), 0) bots ${LOG_FROM} ${whereSql}`, params),
   ]);
   const logTotal = Number(logCount?.count ?? 0);
+  const visitorCount = Number(logCount?.visitors ?? 0);
+  const botEvents = Number(logCount?.bots ?? 0);
+  // How many events each IP has under the current filters — for the IPs on this page, and the busiest IPs overall.
+  const pageIps = [...new Set(rows.map((r) => r.client_ip).filter((x): x is string => !!x))];
+  const [ipCounts, topIps] = await Promise.all([
+    pageIps.length
+      ? query<{ ip: string; n: number }>(
+          `SELECT ${IP} ip, COUNT(*) n ${LOG_FROM} ${whereSql} AND ${IP} IN (${pageIps.map(() => "?").join(",")}) GROUP BY ip`, [...params, ...pageIps])
+      : Promise.resolve([]),
+    query<{ ip: string; n: number; kind: string }>(
+      `SELECT ${IP} ip, COUNT(*) n, MAX(${deviceKindSql(UA)}) kind ${LOG_FROM} ${whereSql} AND ${IP} IS NOT NULL GROUP BY ip ORDER BY n DESC LIMIT 8`, params),
+  ]);
+  const ipCount = new Map(ipCounts.map((r) => [r.ip, Number(r.n)]));
   const logPages = Math.max(Math.ceil(logTotal / LOG_PER_PAGE), 1);
-  const hasLogFilters = !!(eventFilter || fromDate || toDate || timeSlot || failedOnly);
+  const hasLogFilters = !!(eventFilter || fromDate || toDate || timeSlot || failedOnly || ipFilter || deviceFilter);
 
   const byDay = new Map(daily.map((d) => [d.day, d]));
   const series: DayCount[] = Array.from({ length: 7 }, (_, i) => {
@@ -168,9 +195,9 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     },
   ];
 
-  type LogParams = { log?: string; event?: string; from?: string; to?: string; time?: string; page?: number };
+  type LogParams = { log?: string; event?: string; from?: string; to?: string; time?: string; ip?: string; device?: string; page?: number };
   const filterHref = (over: LogParams) => {
-    const cur: LogParams = { log: failedOnly ? "failed" : "", event: eventFilter, from: fromDate, to: toDate, time: timeSlot?.id ?? "", page: 1 };
+    const cur: LogParams = { log: failedOnly ? "failed" : "", event: eventFilter, from: fromDate, to: toDate, time: timeSlot?.id ?? "", ip: ipFilter, device: deviceFilter, page: 1 };
     const merged = { ...cur, ...over };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v && !(k === "page" && v === 1)) p.set(k, String(v));
@@ -278,6 +305,16 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
               {hasLogFilters ? " match" : " in the last 30 days"} · every event is kept for 30 days
             </p>
           </div>
+          <div className="flex flex-wrap items-stretch gap-2">
+            <div className="rounded-xl bg-brand-50 px-4 py-2 ring-1 ring-inset ring-brand-600/15" title="Different IP addresses in the events shown (each address counted once)">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-700">Visitors · unique IPs</p>
+              <p className="text-2xl font-bold tabular-nums leading-tight text-brand-900">{visitorCount.toLocaleString("en-IN")}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 px-4 py-2 ring-1 ring-inset ring-slate-200" title="Events from crawlers (e.g. Facebook's link preview bot)">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bot events</p>
+              <p className="text-2xl font-bold tabular-nums leading-tight text-slate-700">{botEvents.toLocaleString("en-IN")}</p>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             {Number(retryable?.count ?? 0) > 0 && config.capiEnabled && <RetryButton count={Number(retryable?.count)} />}
             <div className="flex rounded-lg bg-slate-100 p-0.5 text-sm">
@@ -300,7 +337,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
               );
             })}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto] xl:items-end">
             <label className="block"><span className="a-label">From</span><input type="date" name="from" defaultValue={fromDate} min={bdDate(LOG_DAYS)} max={bdDate(0)} className="a-input" /></label>
             <label className="block"><span className="a-label">To</span><input type="date" name="to" defaultValue={toDate} min={bdDate(LOG_DAYS)} max={bdDate(0)} className="a-input" /></label>
             <label className="block">
@@ -317,11 +354,38 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                 {EVENT_NAMES.map((e) => <option key={e} value={e}>{e}</option>)}
               </select>
             </label>
+            <label className="block">
+              <span className="a-label">IP address</span>
+              <input name="ip" defaultValue={ipFilter} placeholder="e.g. 103.88.12.40" inputMode="decimal" autoComplete="off" className="a-input font-mono" />
+            </label>
+            <label className="block">
+              <span className="a-label">Device</span>
+              <select name="device" defaultValue={deviceFilter} className="a-input">
+                <option value="">All devices</option>
+                {DEVICE_FILTERS.map((d) => <option key={d} value={d}>{DEVICE_FILTER_LABEL[d]}</option>)}
+              </select>
+            </label>
             <div className="flex gap-2">
               <button type="submit" className="a-btn flex-1">Filter</button>
               {hasLogFilters && <Link href="/admin/pixel#log" className="a-btn-outline">Clear</Link>}
             </div>
           </div>
+          {topIps.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Top IPs</span>
+              {topIps.map((t) => {
+                const active = ipFilter === t.ip;
+                return (
+                  <Link key={t.ip} href={filterHref({ ip: active ? "" : t.ip })} title={active ? "Show all IPs" : "Show only this IP"}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs ring-1 ring-inset transition ${active ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"}`}>
+                    {t.kind === "bot" && <span aria-label="bot">🤖</span>}
+                    <span className="font-mono">{t.ip}</span>
+                    <span className={`rounded px-1 font-semibold tabular-nums ${active ? "bg-white/20" : "bg-slate-100 text-slate-600"}`}>{Number(t.n)}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </form>
         {rows.length === 0 ? (
           <EmptyState title={hasLogFilters ? "No events match these filters" : "No server events yet"}
@@ -363,7 +427,18 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                       </span>
                       {!r.success && !!r.retried && <p className="mt-0.5 text-[11px] text-slate-400">retried</p>}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs text-slate-600">{r.client_ip || <span className="text-slate-300">—</span>}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-xs">
+                      {r.client_ip ? (
+                        <Link href={filterHref({ ip: r.client_ip })} className="group inline-flex items-center gap-1.5" title="Show only this IP">
+                          <span className="font-mono text-slate-700 group-hover:text-brand-700 group-hover:underline">{r.client_ip}</span>
+                          {(ipCount.get(r.client_ip) ?? 0) > 1 && (
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${(ipCount.get(r.client_ip) ?? 0) >= 20 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"}`}>
+                              {ipCount.get(r.client_ip)}×
+                            </span>
+                          )}
+                        </Link>
+                      ) : <span className="text-slate-300">—</span>}
+                    </td>
                     <td className="px-3 py-2.5"><DeviceCell ua={r.client_ua} /></td>
                     <td className="max-w-80 px-5 py-2.5 text-xs text-slate-500"><p className="line-clamp-2" title={r.response ?? ""}>{r.response}</p></td>
                   </tr>

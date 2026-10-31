@@ -37,3 +37,24 @@ export function parseDevice(ua: string | null | undefined): DeviceInfo | null {
 }
 
 export const DEVICE_KIND_LABEL: Record<DeviceKind, string> = { phone: "Phone", tablet: "Tablet", computer: "Computer", bot: "Bot" };
+
+/** Device kinds the admin can filter by ("human" = everything except bots). */
+export const DEVICE_FILTERS = ["human", "phone", "tablet", "computer", "bot"] as const;
+export type DeviceFilter = (typeof DEVICE_FILTERS)[number];
+export const DEVICE_FILTER_LABEL: Record<DeviceFilter, string> = {
+  human: "No bots", phone: "Phone", tablet: "Tablet", computer: "Computer", bot: "Bots only",
+};
+
+/**
+ * The same rules as parseDevice(), as SQL — so filters and counts in the database match the Device column.
+ * `ua` is a trusted SQL expression (a column), never user input.
+ */
+export function deviceKindSql(ua: string) {
+  const u = `LOWER(COALESCE(${ua}, ''))`;
+  return `(CASE
+    WHEN ${u} = '' THEN 'unknown'
+    WHEN ${u} REGEXP 'bot|crawler|spider|crawl|facebookexternalhit|headless|lighthouse|preview' THEN 'bot'
+    WHEN ${u} REGEXP 'ipad|tablet' OR (${u} LIKE '%android%' AND ${u} NOT LIKE '%mobile%') THEN 'tablet'
+    WHEN ${u} REGEXP 'mobile|iphone|ipod|android' THEN 'phone'
+    ELSE 'computer' END)`;
+}

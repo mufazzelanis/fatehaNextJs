@@ -6,6 +6,7 @@ import { getMarketingConfig } from "@/lib/meta/config";
 import { customerUserData, sendServerEvents, type UserData } from "@/lib/meta/capi";
 import { requestUserData } from "@/lib/meta/request";
 import { query } from "@/lib/db";
+import { parseDevice } from "@/lib/device";
 
 const ALLOWED = ["PageView", "ViewContent", "InitiateCheckout", "AddToCart"] as const;
 type BrowserEvent = (typeof ALLOWED)[number];
@@ -30,6 +31,8 @@ export async function trackServerEvent(input: { name: string; eventId: string; u
   } catch {}
 
   const [user, customer] = await Promise.all([requestUserData(), getCustomer()]);
+  // Crawlers (Facebook's link preview, Google, headless tools) are not shoppers — don't report them to Meta.
+  if (parseDevice(user.client_user_agent)?.kind === "bot") return;
   // Logged-in customers get advanced matching too.
   const userData: UserData = customer ? { ...customerUserData({ phone: customer.phone, name: customer.name }), ...user } : user;
 

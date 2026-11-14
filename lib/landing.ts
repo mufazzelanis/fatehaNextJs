@@ -46,7 +46,7 @@ export type LandingSettings = {
 };
 
 export const DEFAULT_LANDING_SETTINGS: LandingSettings = {
-  footerName: "Fateha BD",
+  footerName: "Fatehabd",
   defaultPrefix: "DC",
   contactPhone: "",
   whatsapp: "",

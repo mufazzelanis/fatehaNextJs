@@ -8,7 +8,6 @@ import { queryOne, transaction } from "@/lib/db";
 import { getCustomer } from "@/lib/auth";
 import { getPaymentConfig, getProductsByIds, getStoreConfig, revalidateStock } from "@/lib/data/catalog";
 import { getSettings } from "@/lib/data/store";
-import { resolveArea } from "@/lib/data/locations";
 import { deliveryCharge } from "@/lib/store-config";
 import { isPaymentMethod, isWallet, PAYMENT_LABEL } from "@/lib/payments";
 import { normalizePhone } from "@/lib/phone";
@@ -53,7 +52,7 @@ function parseItems(raw: FormDataEntryValue | null): Line[] {
 
 export async function placeStoreOrder(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const values: Record<string, string> = {};
-  for (const k of ["name", "phone", "address", "note", "district", "thana", "union", "payment", "sender", "trx"]) {
+  for (const k of ["name", "phone", "address", "note", "zone", "payment", "sender", "trx"]) {
     values[k] = String(formData.get(k) ?? "").trim();
   }
   const items = parseItems(formData.get("items"));
@@ -63,15 +62,11 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   if (values.name.length < 2 || values.name.length > 120) fieldErrors.name = "Please enter your full name";
   const phone = normalizePhone(values.phone);
   if (!phone) fieldErrors.phone = "Enter a valid 11-digit mobile number (e.g. 017XXXXXXXX)";
-  if (values.address.length < 5 || values.address.length > 400) fieldErrors.address = "Enter your house, road or village";
+  if (values.address.length < 5 || values.address.length > 400) fieldErrors.address = "Enter your full address (house, road, area, district)";
 
-  const districtId = Math.trunc(Number(values.district));
-  const thanaId = Math.trunc(Number(values.thana));
-  const unionId = Math.trunc(Number(values.union)) || null;
-  const area = districtId > 0 && thanaId > 0 ? await resolveArea(districtId, thanaId, unionId) : null;
-  if (!districtId) fieldErrors.district = "Choose your district";
-  else if (!thanaId) fieldErrors.thana = "Choose your thana / upazila";
-  else if (!area) fieldErrors.thana = "This area doesn't look right — please choose again";
+  // Only "inside / outside Dhaka" is asked — it decides the delivery charge; the full address is typed in one box.
+  const zone = values.zone === "inside" || values.zone === "outside" ? values.zone : null;
+  if (!zone) fieldErrors.zone = "Choose inside or outside Dhaka";
 
   const payments = await getPaymentConfig();
   const method = values.payment;
@@ -88,7 +83,7 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
       sender = values.sender.slice(0, 40) || null;
     }
   }
-  if (Object.keys(fieldErrors).length || !phone || !area || !isPaymentMethod(method)) {
+  if (Object.keys(fieldErrors).length || !phone || !zone || !isPaymentMethod(method)) {
     return { error: "Please fix the highlighted fields.", fieldErrors, values };
   }
 
@@ -112,8 +107,7 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   if (await isIpBlocked(clientIpFrom(h))) {
     return { error: "Sorry, we can't accept orders from your connection right now. Please contact us.", values };
   }
-  const fullAddress = [values.address, area.union_name, area.thana, area.district].filter(Boolean).join(", ");
-  const inside = cfg.insideDistrictIds.includes(districtId);
+  const inside = zone === "inside";
 
   let placed: { no: string; orderId: number; count: number; total: number };
   try {
@@ -132,15 +126,15 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
         return { ...i, name: p.name, price: Number(p.price) };
       });
       const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
-      const shipping = deliveryCharge(cfg, districtId, subtotal);
+      const shipping = deliveryCharge(cfg, inside, subtotal);
       const [res] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_label, shipping_charge, subtotal, total,
-           payment_method, payment_status, payment_sender, payment_trx, source, district_id, thana_id, union_id,
+           payment_method, payment_status, payment_sender, payment_trx, source,
            ip_address, user_agent, fbp, fbc, event_source_url, page_seconds, checkout_seconds)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [customer?.id ?? null, values.name, phone, fullAddress, values.note.slice(0, 1000) || null,
-         inside ? "inside" : "outside", `${area.district}${inside ? " (inside)" : ""}`, shipping, subtotal, subtotal + shipping,
-         method, method === "cod" ? "unpaid" : "pending_verification", sender, trx, districtId, thanaId, unionId,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?)`,
+        [customer?.id ?? null, values.name, phone, values.address, values.note.slice(0, 1000) || null,
+         inside ? "inside" : "outside", inside ? "Inside Dhaka" : "Outside Dhaka", shipping, subtotal, subtotal + shipping,
+         method, method === "cod" ? "unpaid" : "pending_verification", sender, trx,
          clientIpFrom(h), h.get("user-agent")?.slice(0, 300) ?? null,
          jar.get("_fbp")?.value?.slice(0, 255) ?? null, jar.get("_fbc")?.value?.slice(0, 255) ?? null, h.get("referer")?.slice(0, 500) ?? null,
          timing.page, timing.checkout],
@@ -170,7 +164,7 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   revalidateStock();
   await logActivity({
     action: "order.created", module: "orders", entityType: "order", entityId: placed.orderId,
-    description: `New store order #${placed.no} from ${values.name} (${phone}) — ${placed.count} item(s), ৳${placed.total}, ${PAYMENT_LABEL[method]}, ${area.district}`,
+    description: `New store order #${placed.no} from ${values.name} (${phone}) — ${placed.count} item(s), ৳${placed.total}, ${PAYMENT_LABEL[method]}, ${inside ? "Inside" : "Outside"} Dhaka`,
   });
   after(() => alertNewOrder(placed.orderId));
   const marketing = await getMarketingConfig();

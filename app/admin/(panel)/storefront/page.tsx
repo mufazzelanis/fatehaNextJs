@@ -18,9 +18,8 @@ export default function StorefrontPage() {
 
 async function Storefront() {
   await requirePermission("content.manage");
-  const [config, districts, categories, sample] = await Promise.all([
+  const [config, categories, sample] = await Promise.all([
     readStoreConfig(),
-    query<{ id: number; name: string }>("SELECT id, name FROM districts ORDER BY name"),
     query<{ name: string; slug: string }>("SELECT name, slug FROM categories WHERE is_active = 1 ORDER BY sort_order, name"),
     getShopProducts({ sort: "popular" }, 1).then((r) => (r.products[0] ? toCard(r.products[0]) : null)),
   ]);
@@ -28,7 +27,7 @@ async function Storefront() {
     <>
       <PageHeader title="Main Site Settings" description="fatehabd.com shop: homepage banners, product buttons, announcement, delivery charges and contact details. Landing pages have their own settings."
         actions={<a href="/" target="_blank" className="a-btn-outline">Open store ↗</a>} />
-      <StorefrontForm config={config} districts={districts} links={[{ name: "All products", slug: "" }, ...categories]} sample={sample} />
+      <StorefrontForm config={config} links={[{ name: "All products", slug: "" }, ...categories]} sample={sample} />
     </>
   );
 }

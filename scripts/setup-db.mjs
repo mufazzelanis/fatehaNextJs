@@ -128,7 +128,7 @@ if (Number(landingCount.n) === 0) {
   const [[product]] = await conn.query("SELECT id FROM products WHERE slug = ? LIMIT 1", [v.landing_product_slug || "mashroom-dentocare-plus"]);
   await conn.query(
     `INSERT INTO landing_pages (slug, name, status, product_id, content, checkout, banner_image, seo_title, order_prefix, footer_name)
-     VALUES ('fatehalanding', 'মাশরুম ডেন্টোকেয়ার প্লাস', 'published', ?, ?, ?, ?, 'মাশরুম ডেন্টোকেয়ার প্লাস — দাঁত ও মাড়ির প্রাকৃতিক যত্ন', 'DC', 'Masroom Dentocare Plus')`,
+     VALUES ('fatehalanding', 'মাশরুম ডেন্টোকেয়ার প্লাস', 'published', ?, ?, ?, ?, 'মাশরুম ডেন্টোকেয়ার প্লাস — দাঁত ও মাড়ির প্রাকৃতিক যত্ন', 'DC', NULL)`,
     [product?.id ?? null, v.landing_content ?? null, v.checkout_config ?? null, v.banner_image || null],
   );
   console.log("✔ Landing page /fatehalanding created from the old settings");
@@ -137,6 +137,19 @@ if (Number(landingCount.n) === 0) {
 await conn.query(
   "UPDATE orders SET landing_id = (SELECT id FROM landing_pages ORDER BY id LIMIT 1) WHERE source = 'landing' AND landing_id IS NULL",
 );
+// Copyright line: the brand is "Fatehabd" by default. Clears the names the first versions filled in by themselves
+// (a name an admin typed differently is kept).
+await conn.query("UPDATE landing_pages SET footer_name = NULL WHERE footer_name IN ('Masroom Dentocare Plus', 'Fateha BD')");
+const [[ls]] = await conn.query("SELECT `value` FROM settings WHERE `key` = 'landing_settings'");
+if (ls?.value) {
+  try {
+    const parsed = JSON.parse(ls.value);
+    if (["Fateha BD", "Masroom Dentocare Plus", ""].includes(parsed.footerName ?? "")) {
+      parsed.footerName = "Fatehabd";
+      await conn.query("UPDATE settings SET `value` = ? WHERE `key` = 'landing_settings'", [JSON.stringify(parsed)]);
+    }
+  } catch {}
+}
 
 await conn.end();
 console.log("\nAll done. Run `npm run dev` and open http://localhost:3000");

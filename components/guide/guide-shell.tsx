@@ -114,7 +114,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
         </div>
       </section>}
 
-      <LandingFooter name="Fateha BD" />
+      <LandingFooter name="Fatehabd" />
     </div>
   );
 }

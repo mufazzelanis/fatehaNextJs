@@ -185,11 +185,10 @@ export function buttonVars(b: StoreButtons): Record<string, string> {
   };
 }
 
-/** Delivery charge for a district, honouring the free-delivery threshold. */
-export function deliveryCharge(cfg: StoreConfig, districtId: number | null, subtotal: number) {
+/** Delivery charge inside / outside Dhaka, honouring the free-delivery threshold. */
+export function deliveryCharge(cfg: StoreConfig, insideDhaka: boolean, subtotal: number) {
   if (cfg.freeDeliveryOver > 0 && subtotal >= cfg.freeDeliveryOver) return 0;
-  if (!districtId) return cfg.deliveryOutside;
-  return cfg.insideDistrictIds.includes(districtId) ? cfg.deliveryInside : cfg.deliveryOutside;
+  return insideDhaka ? cfg.deliveryInside : cfg.deliveryOutside;
 }
 
 /** "৳3,250" — English digits, like the original fatehabd.com. */

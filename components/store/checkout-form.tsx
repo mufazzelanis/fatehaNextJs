@@ -13,7 +13,6 @@ import { CheckoutTimer } from "../checkout-timer";
 import { Spinner } from "../form-bits";
 import { BagIcon, CashIcon, CheckIcon, LockIcon, ShieldIcon } from "../icons";
 
-type Place = { id: number; name: string; bn_name: string | null };
 type Prefill = { name: string; phone: string; address: string } | null;
 
 const field = "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-[15px] text-ink outline-none transition placeholder:text-slate-400 focus:border-fb-400 focus:ring-4 focus:ring-fb-500/10 aria-invalid:border-rose-400 disabled:bg-slate-50 disabled:text-slate-400";
@@ -41,20 +40,16 @@ function CopyText({ value }: { value: string }) {
   );
 }
 
-export function StoreCheckout({ districts, store, payments, methods, prefill }: {
-  districts: Place[]; store: StoreConfig; payments: PaymentConfig; methods: PaymentMethod[]; prefill: Prefill;
+export function StoreCheckout({ store, payments, methods, prefill }: {
+  store: StoreConfig; payments: PaymentConfig; methods: PaymentMethod[]; prefill: Prefill;
 }) {
   const { items, subtotal } = useCart();
   const [state, action, pending] = useActionState(placeStoreOrder, initialState);
   const v = state.values ?? {};
   const fe = state.fieldErrors ?? {};
 
-  const [district, setDistrict] = useState(v.district ?? "");
-  const [thana, setThana] = useState(v.thana ?? "");
-  const [union, setUnion] = useState(v.union ?? "");
-  const [thanas, setThanas] = useState<Place[]>([]);
-  const [unions, setUnions] = useState<Place[]>([]);
-  const [loadingArea, setLoadingArea] = useState<"" | "thana" | "union">("");
+  // Only "inside / outside Dhaka" is asked (it sets the delivery charge); the full address goes in one box.
+  const [zone, setZone] = useState<"inside" | "outside">(v.zone === "inside" ? "inside" : "outside");
   const [method, setMethod] = useState<PaymentMethod>((v.payment as PaymentMethod) || methods[0]);
   const [checked, setChecked] = useState(false);
   const started = useRef(false);
@@ -72,33 +67,8 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
       { items: items.map((i) => ({ id: i.id, qty: i.qty })) });
   }, [items, subtotal]);
 
-  const loadThanas = (id: string) =>
-    fetch(`/api/locations/thanas?district=${id}`).then((r) => r.json()).then((d: Place[]) => setThanas(d)).catch(() => setThanas([])).finally(() => setLoadingArea(""));
-  const loadUnions = (id: string) =>
-    fetch(`/api/locations/unions?thana=${id}`).then((r) => r.json()).then((d: Place[]) => setUnions(d)).catch(() => setUnions([])).finally(() => setLoadingArea(""));
-
-  const chooseDistrict = (id: string) => {
-    setDistrict(id); setThana(""); setUnion(""); setThanas([]); setUnions([]);
-    if (id) { setLoadingArea("thana"); loadThanas(id); }
-  };
-  const chooseThana = (id: string) => {
-    setThana(id); setUnion(""); setUnions([]);
-    if (id) { setLoadingArea("union"); loadUnions(id); }
-  };
-
-  // After a failed submit the previously chosen area comes back — reload its lists once.
-  const restored = useRef(false);
-  useEffect(() => {
-    if (restored.current) return;
-    restored.current = true;
-    if (district) loadThanas(district);
-    if (thana) loadUnions(thana);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const shipping = district ? deliveryCharge(store, Number(district), subtotal) : null;
-  const total = subtotal + (shipping ?? 0);
-  const placeName = (p: Place) => (p.bn_name ? `${p.name} · ${p.bn_name}` : p.name);
+  const shipping = deliveryCharge(store, zone === "inside", subtotal);
+  const total = subtotal + shipping;
 
   if (!items.length) {
     return (
@@ -116,6 +86,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
       <CheckoutTimer />
       <input type="hidden" name="items" value={JSON.stringify(items.map((i) => ({ id: i.id, qty: i.qty })))} />
       <input type="hidden" name="payment" value={method} />
+      <input type="hidden" name="zone" value={zone} />
 
       <div className="min-w-0 space-y-5">
         <section className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7">
@@ -136,35 +107,29 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
 
         <section className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7">
           <h2 className="flex items-center gap-2 text-lg font-bold text-ink"><span className="grid size-7 place-items-center rounded-full bg-fb-500 text-sm text-white">2</span> Delivery address</h2>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            <div>
-              <label htmlFor="co-district" className={label}>District</label>
-              <select id="co-district" name="district" value={district} onChange={(e) => chooseDistrict(e.target.value)} className={field} aria-invalid={!!fe.district}>
-                <option value="">Select district</option>
-                {districts.map((d) => <option key={d.id} value={d.id}>{placeName(d)}</option>)}
-              </select>
-              <Err msg={fe.district} />
-            </div>
-            <div>
-              <label htmlFor="co-thana" className={label}>Thana / Upazila</label>
-              <select id="co-thana" name="thana" value={thana} onChange={(e) => chooseThana(e.target.value)} disabled={!district || loadingArea === "thana"} className={field} aria-invalid={!!fe.thana}>
-                <option value="">{loadingArea === "thana" ? "Loading…" : district ? "Select thana" : "Choose district first"}</option>
-                {thanas.map((t) => <option key={t.id} value={t.id}>{placeName(t)}</option>)}
-              </select>
-              <Err msg={fe.thana} />
-            </div>
-            <div>
-              <label htmlFor="co-union" className={label}>Union <span className="font-normal text-slate-400">(optional)</span></label>
-              <select id="co-union" name="union" value={union} onChange={(e) => setUnion(e.target.value)} disabled={!thana || loadingArea === "union" || unions.length === 0} className={field}>
-                <option value="">{loadingArea === "union" ? "Loading…" : thana && unions.length === 0 ? "Not needed" : "Select union"}</option>
-                {unions.map((u) => <option key={u.id} value={u.id}>{placeName(u)}</option>)}
-              </select>
-            </div>
+          <div className="mt-5">
+            <label htmlFor="co-address" className={label}>Full address</label>
+            <textarea id="co-address" name="address" defaultValue={v.address ?? prefill?.address} autoComplete="street-address" rows={2}
+              className={`${field} h-auto py-3`} aria-invalid={!!fe.address} placeholder="House, road, area, thana, district — e.g. House 12, Road 3, Mirpur 10, Dhaka" />
+            <Err msg={fe.address} />
           </div>
           <div className="mt-4">
-            <label htmlFor="co-address" className={label}>House, road, area / village</label>
-            <input id="co-address" name="address" defaultValue={v.address ?? prefill?.address} autoComplete="street-address" className={field} aria-invalid={!!fe.address} placeholder="e.g. House 12, Road 3, Block B" />
-            <Err msg={fe.address} />
+            <p className={label}>Delivery area</p>
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Delivery area">
+              {([["inside", "Inside Dhaka", store.deliveryInside], ["outside", "Outside Dhaka", store.deliveryOutside]] as const).map(([z, name, charge]) => (
+                <button key={z} type="button" role="radio" aria-checked={zone === z} onClick={() => setZone(z)}
+                  className={`flex items-center justify-between gap-2 rounded-xl border-2 px-4 py-3 text-left transition ${zone === z ? "border-fb-500 bg-fb-50/60 shadow-sm" : "border-slate-200 hover:border-slate-300"}`}>
+                  <span className="flex items-center gap-2.5">
+                    <span className={`grid size-5 place-items-center rounded-full border-2 ${zone === z ? "border-fb-600" : "border-slate-300"}`}>
+                      {zone === z && <span className="size-2.5 rounded-full bg-fb-600" />}
+                    </span>
+                    <span className="text-[15px] font-semibold text-ink">{name}</span>
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums text-slate-600">{bdt(charge)}</span>
+                </button>
+              ))}
+            </div>
+            <Err msg={fe.zone} />
           </div>
           <div className="mt-4">
             <label htmlFor="co-note" className={label}>Order note <span className="font-normal text-slate-400">(optional)</span></label>
@@ -263,7 +228,7 @@ export function StoreCheckout({ districts, store, payments, methods, prefill }: 
             <div className="flex justify-between text-ink-soft"><dt>Subtotal</dt><dd className="font-semibold text-ink tabular-nums">{bdt(subtotal)}</dd></div>
             <div className="flex justify-between text-ink-soft">
               <dt>Delivery</dt>
-              <dd className="font-semibold text-ink tabular-nums">{shipping === null ? <span className="font-normal text-slate-400">Choose district</span> : shipping === 0 ? <span className="text-emerald-600">Free</span> : bdt(shipping)}</dd>
+              <dd className="font-semibold text-ink tabular-nums">{shipping === 0 ? <span className="text-emerald-600">Free</span> : bdt(shipping)}</dd>
             </div>
             <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
               <dt className="font-bold text-ink">Total</dt>

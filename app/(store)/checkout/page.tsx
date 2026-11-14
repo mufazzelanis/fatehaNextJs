@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getCustomer } from "@/lib/auth";
 import { getPaymentConfig, getStoreConfig } from "@/lib/data/catalog";
-import { getDistricts } from "@/lib/data/locations";
 import { enabledMethods } from "@/lib/payments";
 import { StoreCheckout } from "@/components/store/checkout-form";
 
@@ -20,9 +19,9 @@ export default function CheckoutPage() {
 }
 
 async function Checkout() {
-  const [districts, store, payments, customer] = await Promise.all([getDistricts(), getStoreConfig(), getPaymentConfig(), getCustomer()]);
+  const [store, payments, customer] = await Promise.all([getStoreConfig(), getPaymentConfig(), getCustomer()]);
   return (
-    <StoreCheckout districts={districts} store={store} payments={payments} methods={enabledMethods(payments)}
+    <StoreCheckout store={store} payments={payments} methods={enabledMethods(payments)}
       prefill={customer ? { name: customer.name, phone: customer.phone, address: customer.address ?? "" } : null} />
   );
 }

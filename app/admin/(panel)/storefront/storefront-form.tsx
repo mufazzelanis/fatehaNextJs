@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useState } from "react";
 import { saveStorefront } from "@/app/actions/catalog";
 import { initialState } from "@/lib/action-state";
 import { bdt, type HeroSlide, type StoreConfig } from "@/lib/store-config";
 import { FormAlert, SubmitButton } from "@/components/form-bits";
 import type { CardProduct } from "@/components/store/product-card";
 import { ButtonDesigner } from "./button-designer";
-import { ChevronDownIcon, ImageIcon, PlusIcon, SearchIcon, TrashIcon, XIcon } from "@/components/icons";
+import { ChevronDownIcon, ImageIcon, PlusIcon, TrashIcon, XIcon } from "@/components/icons";
 
 const TONES: { key: HeroSlide["tone"]; label: string; cls: string }[] = [
   { key: "teal", label: "Teal", cls: "from-fb-600 to-fb-800" },
@@ -17,8 +17,8 @@ const TONES: { key: HeroSlide["tone"]; label: string; cls: string }[] = [
 
 type Slide = HeroSlide & { _key: string; file?: File; preview?: string };
 
-export function StorefrontForm({ config, districts, links, sample }: {
-  config: StoreConfig; districts: { id: number; name: string }[]; links: { name: string; slug: string }[]; sample: CardProduct | null;
+export function StorefrontForm({ config, links, sample }: {
+  config: StoreConfig; links: { name: string; slug: string }[]; sample: CardProduct | null;
 }) {
   const [state, dispatch] = useActionState(saveStorefront, initialState);
   const [c, setC] = useState(config);
@@ -148,17 +148,16 @@ export function StorefrontForm({ config, districts, links, sample }: {
         <section className="a-card space-y-4 p-5">
           <h2 className="font-medium text-slate-900">Delivery</h2>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Num label="Inside-area charge (৳)" value={c.deliveryInside} onChange={(v) => set({ deliveryInside: v })} />
-            <Num label="Outside charge (৳)" value={c.deliveryOutside} onChange={(v) => set({ deliveryOutside: v })} />
+            <Num label="Inside Dhaka charge (৳)" value={c.deliveryInside} onChange={(v) => set({ deliveryInside: v })} />
+            <Num label="Outside Dhaka charge (৳)" value={c.deliveryOutside} onChange={(v) => set({ deliveryOutside: v })} />
             <Num label="Free delivery over (৳, 0 = off)" value={c.freeDeliveryOver} onChange={(v) => set({ freeDeliveryOver: v })} />
           </div>
-          <DistrictPicker districts={districts} value={c.insideDistrictIds} onChange={(ids) => set({ insideDistrictIds: ids })} />
           <label className="block">
             <span className="a-label">Delivery time text</span>
             <input value={c.deliveryDays} maxLength={120} onChange={(e) => set({ deliveryDays: e.target.value })} className="a-input" />
           </label>
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            Customers in the selected districts pay {bdt(c.deliveryInside)}; everyone else pays {bdt(c.deliveryOutside)}
+            At checkout the customer picks Inside Dhaka ({bdt(c.deliveryInside)}) or Outside Dhaka ({bdt(c.deliveryOutside)})
             {c.freeDeliveryOver > 0 ? `; orders of ${bdt(c.freeDeliveryOver)} or more ship free` : ""}.
           </p>
         </section>
@@ -200,45 +199,5 @@ function Text({ label, value, onChange, max, placeholder }: { label: string; val
       <span className="a-label">{label}</span>
       <input value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="a-input" />
     </label>
-  );
-}
-
-function DistrictPicker({ districts, value, onChange }: { districts: { id: number; name: string }[]; value: number[]; onChange: (ids: number[]) => void }) {
-  const [term, setTerm] = useState("");
-  const matches = useMemo(() => {
-    const t = term.trim().toLowerCase();
-    return t ? districts.filter((d) => !value.includes(d.id) && d.name.toLowerCase().includes(t)).slice(0, 8) : [];
-  }, [term, districts, value]);
-  return (
-    <div>
-      <span className="a-label">Districts charged the inside rate</span>
-      <div className="flex flex-wrap gap-1.5">
-        {value.map((id) => {
-          const d = districts.find((x) => x.id === id);
-          return (
-            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-fb-50 py-1 pl-3 pr-1 text-sm font-medium text-fb-800 ring-1 ring-fb-200">
-              {d?.name ?? `#${id}`}
-              <button type="button" onClick={() => onChange(value.filter((x) => x !== id))} aria-label={`Remove ${d?.name}`}
-                className="grid size-5 place-items-center rounded-full hover:bg-fb-200"><XIcon className="size-3" /></button>
-            </span>
-          );
-        })}
-        {!value.length && <span className="text-sm text-slate-400">None — everyone pays the outside charge</span>}
-      </div>
-      <div className="relative mt-2">
-        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-        <input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a district…" className="a-input pl-9"
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (matches[0]) { onChange([...value, matches[0].id]); setTerm(""); } } }} />
-        {matches.length > 0 && (
-          <ul className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
-            {matches.map((d) => (
-              <li key={d.id}>
-                <button type="button" onClick={() => { onChange([...value, d.id]); setTerm(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50">{d.name}</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
   );
 }

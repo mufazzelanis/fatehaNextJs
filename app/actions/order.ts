@@ -15,6 +15,7 @@ import { alertNewOrder } from "@/lib/notify";
 import { logActivity } from "@/lib/activity";
 import { clientIpFrom } from "@/lib/client-ip";
 import { readCheckoutTiming } from "@/lib/checkout";
+import { isIpBlocked } from "@/lib/ip-block";
 import { getOrderByNo } from "@/lib/data/orders";
 import { normalizePhone } from "@/lib/phone";
 import { bn, STATUS_META, type OrderStatus } from "@/lib/format";
@@ -89,6 +90,9 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   const customer = await getCustomer();
   const requestHeaders = await headers();
   const ip = clientIpFrom(requestHeaders);
+  if (await isIpBlocked(ip)) {
+    return { error: "দুঃখিত, এই মুহূর্তে আপনার সংযোগ থেকে অর্ডার গ্রহণ করা যাচ্ছে না। আমাদের সাথে যোগাযোগ করুন।", values };
+  }
   const userAgent = requestHeaders.get("user-agent")?.slice(0, 300) ?? null;
   const shipping = zone.charge;
   // Browser identifiers for the Conversions API, kept so Purchase can also be sent later (on confirm/deliver).

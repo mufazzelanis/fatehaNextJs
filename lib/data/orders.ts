@@ -36,6 +36,8 @@ export type Order = {
   fbc: string | null;
   event_source_url: string | null;
   pixel_purchase_sent_at: Date | null;
+  pixel_delivered_sent_at: Date | null;
+  pixel_cancelled_sent_at: Date | null;
   created_at: Date;
   updated_at: Date;
 };

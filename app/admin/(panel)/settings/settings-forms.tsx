@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { blockPhone, saveSettings } from "@/app/actions/admin";
+import { blockIp, blockPhone, saveSettings } from "@/app/actions/admin";
 import { initialState } from "@/lib/action-state";
 import type { Settings } from "@/lib/data/store";
 import { FormAlert, SubmitButton } from "@/components/form-bits";
@@ -31,6 +31,16 @@ export function StoreSettingsForm({ settings }: { settings: Settings }) {
           <p className="self-center rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
             Landing pages have their own lock under <Link href="/admin/landing-settings" className="font-medium text-brand-700 underline">Landing Settings</Link>.
           </p>
+          <label className="block">
+            <span className="a-label">Block the IP of cancelled orders</span>
+            <select name="auto_block_cancel_ip" defaultValue={settings.auto_block_cancel_ip === "0" ? "0" : "1"} className="a-input">
+              <option value="1">On — block automatically when an order is cancelled</option>
+              <option value="0">Off</option>
+            </select>
+            <span className="mt-1 block text-xs text-slate-400">New orders (landing pages and main site) from that IP are refused. Moving the order out of “Cancelled” lifts the block.</span>
+          </label>
+          <Field label="Automatic IP block lasts (days)" name="auto_block_days" type="number" min={0} defaultValue={settings.auto_block_days}
+            hint="Mobile networks share IPs between many people, so keep this short (7 days recommended). 0 = until you unblock it." />
         </div>
       </section>
 
@@ -71,3 +81,20 @@ export function BlockPhoneForm() {
   );
 }
 
+
+export function BlockIpForm() {
+  const [state, action] = useActionState(blockIp, initialState);
+  return (
+    <form action={action} className="space-y-2">
+      <div className="flex gap-2">
+        <input name="ip" placeholder="IP address, e.g. 103.88.12.40" className="a-input font-mono" required />
+        <SubmitButton className="a-btn shrink-0 bg-rose-600 hover:bg-rose-700">Block</SubmitButton>
+      </div>
+      <div className="grid grid-cols-[1fr_7rem] gap-2">
+        <input name="reason" placeholder="Reason (optional)" className="a-input font-sans" />
+        <input name="days" type="number" min={0} placeholder="Days (∞)" className="a-input" aria-label="Days (empty = permanent)" />
+      </div>
+      <FormAlert error={state.error} message={state.message} />
+    </form>
+  );
+}

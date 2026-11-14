@@ -27,6 +27,10 @@ export type Settings = {
   refund_policy: string;
   privacy_policy: string;
   terms_of_service: string;
+  /** "1" = block the customer's IP when their order is cancelled. */
+  auto_block_cancel_ip: string;
+  /** How long that block lasts, in days (0 = until an admin removes it). */
+  auto_block_days: string;
 };
 
 export const SETTING_KEYS: (keyof Settings)[] = [
@@ -42,6 +46,8 @@ export const SETTING_KEYS: (keyof Settings)[] = [
   "refund_policy",
   "privacy_policy",
   "terms_of_service",
+  "auto_block_cancel_ip",
+  "auto_block_days",
 ];
 
 const DEFAULT_SETTINGS: Settings = {
@@ -57,6 +63,8 @@ const DEFAULT_SETTINGS: Settings = {
   refund_policy: "",
   privacy_policy: "",
   terms_of_service: "",
+  auto_block_cancel_ip: "1",
+  auto_block_days: "7",
 };
 
 export const STORE_TAG = "storefront";

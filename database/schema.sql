@@ -363,3 +363,19 @@ CREATE TABLE IF NOT EXISTS landing_clicks (
   INDEX idx_click_created (created_at),
   INDEX idx_click_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Blocked IP addresses (auto-blocked when an order is cancelled, or added by an admin). expires_at NULL = permanent.
+CREATE TABLE IF NOT EXISTS blocked_ips (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  ip          VARCHAR(64)  NOT NULL UNIQUE,
+  reason      VARCHAR(300) NULL,
+  source      VARCHAR(10)  NOT NULL DEFAULT 'manual',
+  order_id    INT UNSIGNED NULL,
+  expires_at  DATETIME     NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_blocked_ip_order (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Conversions API status events (sent once per order)
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pixel_delivered_sent_at DATETIME NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pixel_cancelled_sent_at DATETIME NULL;

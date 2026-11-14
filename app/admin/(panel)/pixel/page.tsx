@@ -62,6 +62,8 @@ const EVENT_STYLE: Record<string, string> = {
   InitiateCheckout: "bg-violet-50 text-violet-700 ring-violet-600/20",
   AddPaymentInfo: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
   Purchase: "bg-emerald-50 text-emerald-700 ring-emerald-600/25",
+  OrderDelivered: "bg-teal-600 text-white ring-teal-700",
+  OrderCancelled: "bg-rose-600 text-white ring-rose-700",
   Lead: "bg-pink-50 text-pink-700 ring-pink-600/20",
   CompleteRegistration: "bg-teal-50 text-teal-700 ring-teal-600/20",
   Search: "bg-cyan-50 text-cyan-700 ring-cyan-600/20",

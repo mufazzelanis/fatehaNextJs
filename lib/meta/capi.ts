@@ -22,7 +22,7 @@ export type ServerEvent = {
   event_id: string;
   event_time?: number;
   event_source_url?: string;
-  action_source?: "website";
+  action_source?: "website" | "system_generated";
   user_data: UserData;
   custom_data?: Record<string, unknown>;
 };
@@ -111,7 +111,7 @@ export async function sendServerEvents(events: ServerEvent[], opts: { orderId?: 
 
   const testCode = opts.testCode ?? config.testEventCode;
   const now = Math.floor(Date.now() / 1000);
-  const data: ServerEvent[] = wanted.map((e) => ({ action_source: "website" as const, event_time: now, ...e }));
+  const data: ServerEvent[] = wanted.map((e) => ({ action_source: "website", event_time: now, ...e }));
 
   const results = await Promise.all(pixels.map((pixel) => postToPixel(config, pixel, data, testCode)));
   for (const [i, pixel] of pixels.entries()) {
@@ -248,5 +248,66 @@ export async function sendPurchaseForOrder(orderId: number, { force = false } = 
     { orderId },
   );
   if (result.ok) await execute("UPDATE orders SET pixel_purchase_sent_at = NOW() WHERE id = ?", [orderId]);
+  return result;
+}
+
+/** Order outcome events Meta can use for audiences and reporting (custom events, sent once per order). */
+const STATUS_EVENTS = {
+  delivered: { name: "OrderDelivered", column: "pixel_delivered_sent_at", prefix: "delivered" },
+  cancelled: { name: "OrderCancelled", column: "pixel_cancelled_sent_at", prefix: "cancelled" },
+} as const;
+export type StatusEventKind = keyof typeof STATUS_EVENTS;
+
+/**
+ * Tells Meta an order was delivered or cancelled (Conversions API only — there is no browser for this).
+ * Same customer matching as Purchase (hashed phone & name, IP, browser, _fbp/_fbc), so Meta can tie it to the buyer.
+ */
+export async function sendStatusEventForOrder(orderId: number, kind: StatusEventKind, { force = false } = {}): Promise<SendResult> {
+  const ev = STATUS_EVENTS[kind];
+  const config = await getMarketingConfig();
+  if (!config.events[ev.name]) return { ok: false, status: null, message: `${ev.name} event is turned off` };
+  const order = await queryOne<OrderForPixel & { sent_at: Date | null }>(
+    `SELECT id, order_no, customer_name, phone, subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, pixel_purchase_sent_at,
+            ${ev.column} AS sent_at
+     FROM orders WHERE id = ?`,
+    [orderId],
+  );
+  if (!order) return { ok: false, status: null, message: "Order not found" };
+  if (order.sent_at && !force) return { ok: true, status: null, message: "Already sent" };
+
+  const items = await query<{ product_id: number | null; quantity: number; unit_price: number; product_name: string }>(
+    "SELECT product_id, quantity, unit_price, product_name FROM order_items WHERE order_id = ?",
+    [orderId],
+  );
+  const user = customerUserData({ phone: order.phone, name: order.customer_name });
+  if (order.ip_address) user.client_ip_address = order.ip_address;
+  if (order.user_agent) user.client_user_agent = order.user_agent;
+  if (order.fbp) user.fbp = order.fbp;
+  if (order.fbc) user.fbc = order.fbc;
+
+  const result = await sendServerEvents(
+    [
+      {
+        event_name: ev.name,
+        event_id: `${ev.prefix}_${order.order_no}`,
+        // Decided by the shop, not done by the visitor on the website.
+        action_source: "system_generated",
+        event_source_url: order.event_source_url ?? undefined,
+        user_data: user,
+        custom_data: {
+          currency: "BDT",
+          value: Number(config.purchaseValue === "subtotal" ? order.subtotal : order.total),
+          order_id: order.order_no,
+          order_status: kind,
+          content_type: "product",
+          content_ids: items.map((i) => String(i.product_id ?? i.product_name)),
+          contents: items.map((i) => ({ id: String(i.product_id ?? i.product_name), quantity: i.quantity, item_price: Number(i.unit_price) })),
+          num_items: items.reduce((s, i) => s + i.quantity, 0),
+        },
+      },
+    ],
+    { orderId },
+  );
+  if (result.ok) await execute(`UPDATE orders SET ${ev.column} = NOW() WHERE id = ?`, [orderId]);
   return result;
 }

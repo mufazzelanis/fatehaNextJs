@@ -6,7 +6,8 @@ import { getOrderById, parseCustomFields, previousOrdersByPhone, zoneLabel } fro
 import { readLanding } from "@/lib/data/landings";
 import { query, queryOne } from "@/lib/db";
 import { dateTime, money, STATUS_META } from "@/lib/format";
-import { deleteOrder } from "@/app/actions/admin";
+import { blockOrderIp, deleteOrder, unblockIp } from "@/app/actions/admin";
+import { blockedIpFor } from "@/lib/ip-block";
 import { PageHeader, PanelSkeleton, StatusBadge } from "@/components/admin/ui";
 import { AlertIcon, ChevronLeftIcon, PhoneIcon, PrinterIcon, WhatsappIcon } from "@/components/icons";
 import { DeleteOrderButton, OrderDetailsForm, ResendPurchaseButton, StatusForm } from "./order-forms";
@@ -30,7 +31,7 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
   if (!Number.isInteger(id) || id <= 0) notFound();
   const order = await getOrderById(id);
   if (!order) notFound();
-  const [previous, blocked, marketing, landing, activity] = await Promise.all([
+  const [previous, blocked, marketing, landing, activity, ipBlock] = await Promise.all([
     previousOrdersByPhone(order.phone, order.id),
     queryOne<{ reason: string | null }>("SELECT reason FROM blocked_phones WHERE phone = ?", [order.phone]),
     getMarketingConfig(),
@@ -41,8 +42,10 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
           [String(order.id)],
         )
       : Promise.resolve(null),
+    blockedIpFor(order.ip_address),
   ]);
   const canEdit = can(admin, "orders.edit");
+  const canBlock = can(admin, "customers.block");
   const customFields = parseCustomFields(order.custom_fields);
   const prevCancelled = previous.filter((p) => p.status === "cancelled" || p.status === "returned").length;
   const prevDelivered = previous.filter((p) => p.status === "delivered").length;
@@ -251,7 +254,27 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
           <section className="a-card p-5 text-xs text-slate-500">
             <h2 className="mb-2 text-sm font-medium text-slate-900">Technical</h2>
             <CheckoutTime page={order.page_seconds} form={order.checkout_seconds} />
-            <p className="mt-3">IP: <span className="font-mono">{order.ip_address ?? "—"}</span></p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span>IP: <span className="font-mono">{order.ip_address ?? "—"}</span></span>
+              {ipBlock && (
+                <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700" title={ipBlock.reason ?? ""}>
+                  Blocked{ipBlock.expires_at ? ` until ${dateTime(ipBlock.expires_at)}` : ""}{ipBlock.source === "auto" ? " (auto)" : ""}
+                </span>
+              )}
+              {canBlock && order.ip_address && (
+                ipBlock ? (
+                  <form action={unblockIp}>
+                    <input type="hidden" name="ip" value={order.ip_address} />
+                    <button className="rounded-md px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Unblock IP</button>
+                  </form>
+                ) : (
+                  <form action={blockOrderIp}>
+                    <input type="hidden" name="id" value={order.id} />
+                    <button className="rounded-md px-2 py-0.5 text-[11px] font-medium text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50">Block IP</button>
+                  </form>
+                )
+              )}
+            </div>
             <p className="mt-1 break-all">Device: {order.user_agent ?? "—"}</p>
             <p className="mt-1">Account: {order.user_id ? `Registered customer #${order.user_id}` : "Guest checkout"}</p>
             <p className="mt-1">Facebook click ID: {order.fbc ? "yes (from ad)" : "—"} · Browser ID: {order.fbp ? "yes" : "—"}</p>
@@ -267,6 +290,12 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
             {marketing.capiEnabled && can(admin, "marketing.manage")
               ? <ResendPurchaseButton id={order.id} sent={!!order.pixel_purchase_sent_at} />
               : <p className="mt-1 text-xs text-slate-400">Conversions API is off — set it up under Facebook Pixel.</p>}
+            {(order.pixel_delivered_sent_at || order.pixel_cancelled_sent_at) && (
+              <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs">
+                {order.pixel_delivered_sent_at && <li className="text-teal-700">OrderDelivered sent to Meta · {dateTime(order.pixel_delivered_sent_at)}</li>}
+                {order.pixel_cancelled_sent_at && <li className="text-rose-700">OrderCancelled sent to Meta · {dateTime(order.pixel_cancelled_sent_at)}</li>}
+              </ul>
+            )}
           </section>
         </div>
       </div>

@@ -14,6 +14,7 @@ import { isPaymentMethod, isWallet, PAYMENT_LABEL } from "@/lib/payments";
 import { normalizePhone } from "@/lib/phone";
 import { clientIpFrom } from "@/lib/client-ip";
 import { readCheckoutTiming } from "@/lib/checkout";
+import { isIpBlocked } from "@/lib/ip-block";
 import { logActivity } from "@/lib/activity";
 import { alertNewOrder } from "@/lib/notify";
 import { getMarketingConfig } from "@/lib/meta/config";
@@ -108,6 +109,9 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   }
 
   const [cfg, customer, h, jar] = await Promise.all([getStoreConfig(), getCustomer(), headers(), cookies()]);
+  if (await isIpBlocked(clientIpFrom(h))) {
+    return { error: "Sorry, we can't accept orders from your connection right now. Please contact us.", values };
+  }
   const fullAddress = [values.address, area.union_name, area.thana, area.district].filter(Boolean).join(", ");
   const inside = cfg.insideDistrictIds.includes(districtId);
 

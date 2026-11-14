@@ -4,7 +4,8 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getMarketingConfig } from "@/lib/meta/config";
-import { sendPurchaseForOrder } from "@/lib/meta/capi";
+import { sendPurchaseForOrder, sendStatusEventForOrder } from "@/lib/meta/capi";
+import { autoBlockCancelled, liftAutoBlock } from "@/lib/ip-block";
 import { execute, query, queryOne, transaction } from "@/lib/db";
 import { adminWith, DENIED, requirePermission } from "@/lib/auth";
 import { SETTING_KEYS, STORE_TAG } from "@/lib/data/store";
@@ -65,6 +66,26 @@ async function purchaseOnStatus(orderIds: number[], status: OrderStatus) {
   });
 }
 
+/**
+ * Side effects of a status change: auto-block the IP of cancelled orders (lifted again if an order leaves
+ * "cancelled"), and tell Meta about delivered / cancelled orders. Returns the number of IPs blocked.
+ */
+async function afterStatusChange(changed: { id: number; from: OrderStatus }[], status: OrderStatus) {
+  const ids = changed.map((c) => c.id);
+  const reopened = changed.filter((c) => c.from === "cancelled" && status !== "cancelled").map((c) => c.id);
+  if (reopened.length) await liftAutoBlock(reopened);
+  const blocked = status === "cancelled" ? await autoBlockCancelled(ids) : [];
+  if ((status === "delivered" || status === "cancelled") && ids.length) {
+    const config = await getMarketingConfig();
+    if (config.capiEnabled) {
+      after(async () => {
+        for (const id of ids) await sendStatusEventForOrder(id, status);
+      });
+    }
+  }
+  return blocked.length;
+}
+
 export async function resendPurchase(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await adminWith("marketing.manage");
   if (!admin) return DENIED;
@@ -95,8 +116,9 @@ export async function updateOrderStatus(_prev: ActionState, formData: FormData):
   }
   if (changed.length) revalidateStock();
   await purchaseOnStatus([id], status);
+  const blocked = await afterStatusChange(changed, status);
   refresh();
-  return { ok: true, message: changed.length ? "Status updated" : "Status unchanged" };
+  return { ok: true, message: changed.length ? `Status updated${blocked ? " · customer IP blocked" : ""}` : "Status unchanged" };
 }
 
 export async function bulkOrderAction(ids: number[], action: OrderStatus | "delete"): Promise<ActionState> {
@@ -141,8 +163,9 @@ export async function bulkOrderAction(ids: number[], action: OrderStatus | "dele
   }
   if (changed.length) revalidateStock();
   await purchaseOnStatus(clean, action);
+  const blocked = await afterStatusChange(changed, action);
   refresh();
-  return { ok: true, message: `${changed.length} order(s) marked ${action}` };
+  return { ok: true, message: `${changed.length} order(s) marked ${action}${blocked ? ` · ${blocked} IP(s) blocked` : ""}` };
 }
 
 type OrderEditable = {
@@ -246,6 +269,56 @@ export async function blockPhone(_prev: ActionState, formData: FormData): Promis
   });
   refresh();
   return { ok: true, message: `${phone} blocked` };
+}
+
+const IP_RE = /^(?:\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]{3,45}$/;
+
+/** Admin blocks an IP by hand (permanent unless days are given). A manual block is never overwritten by an automatic one. */
+export async function blockIp(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await adminWith("customers.block");
+  if (!admin) return DENIED;
+  const ip = String(formData.get("ip") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300) || null;
+  const days = Math.max(Math.round(Number(formData.get("days")) || 0), 0);
+  if (!IP_RE.test(ip)) return { error: "Enter a valid IP address, e.g. 103.88.12.40" };
+  await execute(
+    `INSERT INTO blocked_ips (ip, reason, source, order_id, expires_at) VALUES (?, ?, 'manual', NULL, ${days ? "NOW() + INTERVAL ? DAY" : "NULL"})
+     ON DUPLICATE KEY UPDATE reason = VALUES(reason), source = 'manual', expires_at = VALUES(expires_at), created_at = NOW()`,
+    days ? [ip, reason, days] : [ip, reason],
+  );
+  await logActivity({
+    actor: actorOf(admin), action: "ip.blocked", module: "customers", entityType: "ip", entityId: ip,
+    description: `Blocked IP ${ip}${days ? ` for ${days} day(s)` : ""}${reason ? ` — ${reason}` : ""}`,
+  });
+  refresh();
+  return { ok: true, message: `${ip} blocked` };
+}
+
+/** "Block IP" button on an order page: blocks the IP the order came from, permanently. */
+export async function blockOrderIp(formData: FormData) {
+  const admin = await requirePermission("customers.block");
+  const order = await queryOne<{ id: number; order_no: string; ip_address: string | null }>(
+    "SELECT id, order_no, ip_address FROM orders WHERE id = ?", [Number(formData.get("id"))]);
+  if (!order?.ip_address) return;
+  await execute(
+    `INSERT INTO blocked_ips (ip, reason, source, order_id, expires_at) VALUES (?, ?, 'manual', ?, NULL)
+     ON DUPLICATE KEY UPDATE reason = VALUES(reason), source = 'manual', order_id = VALUES(order_id), expires_at = NULL`,
+    [order.ip_address, `Blocked from order #${order.order_no}`, order.id],
+  );
+  await logActivity({
+    actor: actorOf(admin), action: "ip.blocked", module: "orders", entityType: "order", entityId: order.id,
+    description: `Blocked IP ${order.ip_address} of order #${order.order_no}`,
+  });
+  refresh();
+}
+
+export async function unblockIp(formData: FormData) {
+  const admin = await requirePermission("customers.block");
+  const ip = String(formData.get("ip") ?? "").trim();
+  if (!IP_RE.test(ip)) return;
+  await execute("DELETE FROM blocked_ips WHERE ip = ?", [ip]);
+  await logActivity({ actor: actorOf(admin), action: "ip.unblocked", module: "customers", entityType: "ip", entityId: ip, description: `Unblocked IP ${ip}` });
+  refresh();
 }
 
 export async function toggleBlockPhone(formData: FormData) {

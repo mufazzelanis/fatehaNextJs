@@ -13,7 +13,10 @@ declare global {
 }
 
 export type PixelSetup = {
+  /** Main site pixels. */
   pixelIds: string[];
+  /** Landing slug → that page's pixels (used instead of the main ones). */
+  scopes: Record<string, string[]>;
   browser: boolean;
   capi: boolean;
   serverPageView: boolean;
@@ -21,6 +24,9 @@ export type PixelSetup = {
 };
 
 let setup: PixelSetup | null = null;
+/** Pixels of the page being viewed — events go only to these (fbq trackSingle). */
+let active: string[] | null = null;
+const initialised = new Set<string>();
 const pending: (() => void)[] = [];
 
 function loadScript() {
@@ -49,14 +55,28 @@ function storeFbclid() {
   document.cookie = `_fbc=${value}; path=/; max-age=${60 * 60 * 24 * 90}; SameSite=Lax`;
 }
 
-export function initPixel(config: PixelSetup, advancedMatching?: Record<string, string>) {
+export function initPixel(config: PixelSetup) {
   if (setup) return;
   setup = config;
   storeFbclid();
-  if (config.browser) {
+}
+
+/** Which pixels this page reports to: a landing page's own (by slug), or the main site's. */
+export function pixelsForPage(config: PixelSetup, pathname: string, search: string) {
+  const slug = pathname === "/order/success" ? new URLSearchParams(search).get("l") ?? "" : pathname.split("/")[1] ?? "";
+  return config.scopes[slug] ?? config.pixelIds;
+}
+
+/** Switches the page's pixels (initialising any new one) and releases events that were waiting. */
+export function activatePixels(ids: string[]) {
+  active = ids;
+  if (setup?.browser && ids.length) {
     loadScript();
-    // Every initialised pixel receives each tracked event.
-    for (const id of config.pixelIds) window.fbq!("init", id, advancedMatching ?? {});
+    for (const id of ids) {
+      if (initialised.has(id)) continue;
+      initialised.add(id);
+      window.fbq!("init", id);
+    }
   }
   pending.splice(0).forEach((run) => run());
 }
@@ -73,12 +93,12 @@ export function track(name: string, params: Record<string, unknown> = {}, option
   const run = () => {
     if (!setup || setup.events[name as EventName] === false) return;
     const eventId = options.eventId ?? newEventId(name.toLowerCase());
-    if (setup.browser && window.fbq) window.fbq("track", name, params, { eventID: eventId });
+    if (setup.browser && window.fbq) for (const id of active ?? []) window.fbq("trackSingle", id, name, params, { eventID: eventId });
     const serverAllowed = options.serverSide !== false && setup.capi && (name !== "PageView" || setup.serverPageView);
     if (serverAllowed) {
       trackServerEvent({ name, eventId, url: window.location.href, quantity: options.quantity, items: options.items }).catch(() => {});
     }
   };
-  if (setup) run();
+  if (setup && active) run();
   else pending.push(run);
 }

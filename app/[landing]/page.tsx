@@ -14,6 +14,8 @@ import { responsive } from "@/lib/media";
 import { readableButton } from "@/lib/store-config";
 import { mediaSize } from "@/lib/uploads";
 import { ViewContentEvent } from "@/components/meta/meta-pixel";
+import { VideoEmbed } from "@/components/landing/video-embed";
+import { videoEmbed, type Block, type SectionKey } from "@/lib/content";
 
 /** Large, thumb-friendly order button: full width on phones, with a soft moving shine so it is easy to spot. */
 function OrderButton({ color, text }: { color: string; text: string }) {
@@ -98,16 +100,149 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
     l.banner_image ? mediaSize(l.banner_image) : { width: 1060, height: 300 },
   ]);
   const c = l.content;
+  const t = c.theme;
   const checkout = l.checkout;
   const image = productImageUrl(product);
   const priceBn = bn(Math.round(product?.price ?? 750));
   const productName = product?.name ?? "মাশরুম ডেন্টোকেয়ার প্লাস";
   const btn = c.orderButtonText;
+  const blocks = new Map(c.blocks.map((b) => [`b:${b.id}`, b]));
+
+  /** One movable section (built-in or custom block), or null when it is hidden / empty. */
+  const renderSection = (key: SectionKey) => {
+    switch (key) {
+      case "approval":
+        return (
+          <section key={key} className="pb-3 pt-2" style={{ backgroundColor: t.pageBg }}>
+            <div className="mx-auto max-w-[940px] px-4">
+              <h1 className="text-center text-[27px] font-bold leading-[1.35] sm:text-[28px] sm:leading-snug" style={{ color: t.headingColor }}><RichText text={c.approvalHeading} price={priceBn} /></h1>
+              <div className="mt-6 text-center"><OrderButton color={c.colors.topButton} text={btn} /></div>
+            </div>
+          </section>
+        );
+      case "intro":
+        if (!c.introText.trim()) return null;
+        return (
+          <section key={key} className="pb-3 pt-6" style={{ backgroundColor: t.pageBg }}>
+            <div className="mx-auto max-w-[940px] px-4">
+              <div className="whitespace-pre-line rounded-2xl px-5 py-6 text-[19px] font-bold leading-[1.8] shadow-sm sm:rounded-none sm:px-7 sm:text-[16.5px] sm:leading-[1.75] sm:shadow-none"
+                style={{ backgroundColor: c.colors.introBox }}>
+                <RichText text={c.introText} price={priceBn} />
+              </div>
+            </div>
+          </section>
+        );
+      case "benefits":
+        if (!c.showBenefits || !c.benefits.length) return null;
+        return (
+          <section key={key} className="pb-14 pt-11" style={{ backgroundColor: t.pageBg }}>
+            <div className="mx-auto max-w-[940px] px-4">
+              <div className="text-center">
+                <h2 className="inline-block rounded-[8px] px-2.5 py-1 text-[30px] font-bold" style={{ backgroundColor: t.benefitsTitleBg, color: t.benefitsTitleText }}>{c.benefitsTitle}</h2>
+              </div>
+              <div className="mt-10 grid gap-4 md:mt-12 md:grid-cols-2 md:items-start md:gap-2">
+                {pairs(c.benefits).map((card, ci) => (
+                  <div key={ci}
+                    className={`rounded-[22px] px-5 py-6 text-[19px] font-bold leading-[1.5] shadow-lg sm:py-5 sm:text-[15px] sm:leading-snug transition duration-300 hover:-translate-y-1 sm:px-6 ${
+                      ci % 3 === 1 ? "md:mt-1.5" : ""} ${ci % 3 === 2 ? "md:mx-1.5" : ""}`}
+                    style={{ backgroundColor: c.colors.benefitCard, color: c.colors.benefitText }}>
+                    {card.map((line, li) => (
+                      <p key={li} className={li ? "mt-5 sm:mt-4" : ""}>{bn(ci * 2 + li + 1)}/ <RichText text={line} price={priceBn} /></p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      case "cta":
+        return (
+          <section key={key} className="px-4 pb-8 pt-2 text-center" style={{ backgroundColor: t.pageBg }}>
+            <OrderButton color={c.colors.ctaButton} text={btn} />
+          </section>
+        );
+      case "price":
+        if (!c.showPrice) return null;
+        return (
+          <section key={key} className="py-7" style={{ backgroundColor: t.altBg }}>
+            <div className="mx-auto grid max-w-[940px] items-center gap-6 px-4 md:grid-cols-2">
+              <div className="mx-auto grid aspect-square w-full max-w-90 place-items-center rounded-2xl bg-white p-6 shadow-md sm:rounded-none sm:shadow-none">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img {...responsive(image, "(min-width: 768px) 312px, calc(100vw - 80px)", [256, 384, 512, 640])} alt={productName} width={400} height={400} className="size-full object-contain transition duration-500 hover:scale-105" loading="lazy" decoding="async" />
+              </div>
+              <div className="text-center">
+                <p className="text-[26px] font-extrabold leading-snug text-[#e11d1d] sm:text-[20px] sm:font-bold"><RichText text={c.priceTitle} price={priceBn} /></p>
+                <p className="mt-2 text-[18px] font-bold leading-relaxed sm:text-[14px]"><RichText text={c.priceSubtitle} price={priceBn} /></p>
+                <div className="mt-6 sm:mt-5"><OrderButton color={c.colors.priceButton} text={btn} /></div>
+              </div>
+            </div>
+          </section>
+        );
+      case "faq":
+        if (!c.showFaq || !c.faqs.length) return null;
+        return (
+          <section key={key} className="py-8" style={{ backgroundColor: t.pageBg }}>
+            <div className="mx-auto max-w-[940px] px-4 text-[18px] leading-[1.75] text-[#222] sm:text-[14px] sm:leading-[1.6]">
+              <h2 className="text-center text-[29px] font-bold sm:text-[28px]" style={{ color: t.headingColor }}>{c.faqTitle}</h2>
+              {c.faqs.map((f, i) => (
+                <div key={i} className={`rounded-2xl bg-white p-4 shadow-sm sm:rounded-none sm:bg-transparent sm:p-0 sm:shadow-none ${i ? "mt-5 sm:mt-8" : "mt-6"}`}>
+                  <p className="whitespace-pre-line font-bold text-[#0f5132] sm:font-normal sm:text-inherit"><b>{bn(i + 1)}/</b> <RichText text={f.q} price={priceBn} /></p>
+                  <p className="mt-3 whitespace-pre-line sm:mt-5"><b>উত্তর:</b> <RichText text={f.a} price={priceBn} /></p>
+                </div>
+              ))}
+              <div className="mt-10 text-center"><OrderButton color={c.colors.faqButton} text={btn} /></div>
+            </div>
+          </section>
+        );
+      case "ingredients":
+        if (!c.showIngredients) return null;
+        return (
+          <section key={key} className="py-6" style={{ backgroundColor: t.altBg }}>
+            <div className="mx-auto grid max-w-[940px] gap-8 px-4 md:grid-cols-2 md:gap-5">
+              <div>
+                <h2 className="text-[25px] font-bold text-[#1e293b] sm:text-[20px]">{c.ingredientsTitle}</h2>
+                <ul className="mt-2">
+                  {c.ingredients.map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 border-b border-dashed border-[#8a8f98] py-3 text-[18px] font-semibold text-[#2f343b] last:border-b-0 sm:py-[6px] sm:text-[14px]">
+                      <HandIcon /> <span><RichText text={item} price={priceBn} /></span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5 text-center sm:mt-3"><OrderButton color={c.colors.ingredientsButton} text={btn} /></div>
+              </div>
+              <div>
+                {c.usageText.trim() && (
+                  <>
+                    <h2 className="text-[25px] font-bold text-[#1e293b] sm:text-[20px]">{c.usageTitle}</h2>
+                    <p className="mt-3 flex items-start gap-2 text-[18px] font-bold leading-[1.7] sm:items-center sm:text-[14px] sm:leading-[1.6]">
+                      <HandIcon /> <span className="whitespace-pre-line"><RichText text={c.usageText} price={priceBn} /></span>
+                    </p>
+                  </>
+                )}
+                {c.adviceText.trim() && (
+                  <>
+                    <h2 className="mt-6 text-[25px] font-bold text-[#1e293b] sm:mt-5 sm:text-[20px]">{c.adviceTitle}</h2>
+                    <p className="mt-3 flex items-start gap-2 text-[18px] font-bold leading-[1.7] sm:items-center sm:text-[14px] sm:leading-[1.6]">
+                      <HandIcon /> <span className="whitespace-pre-line"><RichText text={c.adviceText} price={priceBn} /></span>
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+        );
+      default: {
+        const b = blocks.get(key);
+        return b ? <CustomBlock key={key} block={b} btn={btn} priceBn={priceBn} /> : null;
+      }
+    }
+  };
 
   return (
     <div className="bg-white font-sans text-[#111]">
-      {/* ===== HERO: product photo + label banner ===== */}
-      <section className="bg-linear-to-b from-[#8df28d] via-[#c9f7c9] to-[#f3f6f9] pb-6 pt-4 sm:pt-6">
+      {/* ===== HERO: product photo + label banner (always first) ===== */}
+      <section className="pb-6 pt-4 sm:pt-6"
+        style={{ backgroundImage: `linear-gradient(to bottom, ${t.heroFrom}, color-mix(in srgb, ${t.heroFrom} 50%, white), ${t.heroTo})` }}>
         <div className="mx-auto grid max-w-[940px] items-start gap-4 px-4 sm:grid-cols-[230px_1fr] sm:gap-4">
           <div className="mx-auto w-[82%] max-w-[320px] sm:mx-0 sm:w-auto">
             <div className="grid aspect-[230/215] place-items-center rounded-2xl bg-white p-3 shadow-md sm:rounded-none sm:p-2 sm:shadow-none">
@@ -127,120 +262,14 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
         </div>
       </section>
 
-      {/* ===== APPROVAL + INTRO + BENEFITS ===== */}
-      <section className="bg-[#f3f6f9] pb-14 pt-2">
-        <div className="mx-auto max-w-[940px] px-4">
-          <h1 className="text-center text-[27px] font-bold leading-[1.35] sm:text-[28px] sm:leading-snug"><RichText text={c.approvalHeading} price={priceBn} /></h1>
-          <div className="mt-6 text-center"><OrderButton color={c.colors.topButton} text={btn} /></div>
+      {/* ===== Sections in the order chosen in the admin editor ===== */}
+      {c.layout.map(renderSection)}
 
-          {c.introText.trim() && (
-            <div className="mt-9 whitespace-pre-line rounded-2xl px-5 py-6 text-[19px] font-bold leading-[1.8] shadow-sm sm:rounded-none sm:px-7 sm:text-[16.5px] sm:leading-[1.75] sm:shadow-none"
-              style={{ backgroundColor: c.colors.introBox }}>
-              <RichText text={c.introText} price={priceBn} />
-            </div>
-          )}
-
-          {c.showBenefits && c.benefits.length > 0 && (
-            <>
-              <div className="mt-14 text-center">
-                <h2 className="inline-block rounded-[8px] bg-[#b6f20f] px-2.5 py-1 text-[30px] font-bold text-[#e8232a] sm:text-[30px]">{c.benefitsTitle}</h2>
-              </div>
-              <div className="mt-10 grid gap-4 md:mt-12 md:grid-cols-2 md:items-start md:gap-2">
-                {pairs(c.benefits).map((card, ci) => (
-                  <div key={ci}
-                    className={`rounded-[22px] px-5 py-6 text-[19px] font-bold leading-[1.5] shadow-lg sm:py-5 sm:text-[15px] sm:leading-snug transition duration-300 hover:-translate-y-1 sm:px-6 ${
-                      ci % 3 === 1 ? "md:mt-1.5" : ""} ${ci % 3 === 2 ? "md:mx-1.5" : ""}`}
-                    style={{ backgroundColor: c.colors.benefitCard, color: c.colors.benefitText }}>
-                    {card.map((line, li) => (
-                      <p key={li} className={li ? "mt-5 sm:mt-4" : ""}>{bn(ci * 2 + li + 1)}/ <RichText text={line} price={priceBn} /></p>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ===== CTA ===== */}
-      <section className="bg-[#f3f6f9] px-4 pb-8 pt-2 text-center">
-        <OrderButton color={c.colors.ctaButton} text={btn} />
-      </section>
-
-      {/* ===== PRICE ===== */}
-      {c.showPrice && (
-        <section className="bg-[#efefef] py-7">
-          <div className="mx-auto grid max-w-[940px] items-center gap-6 px-4 md:grid-cols-2">
-            <div className="mx-auto grid aspect-square w-full max-w-90 place-items-center rounded-2xl bg-white p-6 shadow-md sm:rounded-none sm:shadow-none">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img {...responsive(image, "(min-width: 768px) 312px, calc(100vw - 80px)", [256, 384, 512, 640])} alt={productName} width={400} height={400} className="size-full object-contain transition duration-500 hover:scale-105" loading="lazy" decoding="async" />
-            </div>
-            <div className="text-center">
-              <p className="text-[26px] font-extrabold leading-snug text-[#e11d1d] sm:text-[20px] sm:font-bold"><RichText text={c.priceTitle} price={priceBn} /></p>
-              <p className="mt-2 text-[18px] font-bold leading-relaxed sm:text-[14px]"><RichText text={c.priceSubtitle} price={priceBn} /></p>
-              <div className="mt-6 sm:mt-5"><OrderButton color={c.colors.priceButton} text={btn} /></div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ===== FAQ ===== */}
-      {c.showFaq && c.faqs.length > 0 && (
-        <section className="bg-[#f3f6f9] py-8">
-          <div className="mx-auto max-w-[940px] px-4 text-[18px] leading-[1.75] text-[#222] sm:text-[14px] sm:leading-[1.6]">
-            <h2 className="text-center text-[29px] font-bold text-[#111] sm:text-[28px]">{c.faqTitle}</h2>
-            {c.faqs.map((f, i) => (
-              <div key={i} className={`rounded-2xl bg-white p-4 shadow-sm sm:rounded-none sm:bg-transparent sm:p-0 sm:shadow-none ${i ? "mt-5 sm:mt-8" : "mt-6"}`}>
-                <p className="whitespace-pre-line font-bold text-[#0f5132] sm:font-normal sm:text-inherit"><b>{bn(i + 1)}/</b> <RichText text={f.q} price={priceBn} /></p>
-                <p className="mt-3 whitespace-pre-line sm:mt-5"><b>উত্তর:</b> <RichText text={f.a} price={priceBn} /></p>
-              </div>
-            ))}
-            <div className="mt-10 text-center"><OrderButton color={c.colors.faqButton} text={btn} /></div>
-          </div>
-        </section>
-      )}
-
-      {/* ===== INGREDIENTS / USAGE / ADVICE ===== */}
-      {c.showIngredients && (
-        <section className="bg-[#efefef] py-6">
-          <div className="mx-auto grid max-w-[940px] gap-8 px-4 md:grid-cols-2 md:gap-5">
-            <div>
-              <h2 className="text-[25px] font-bold text-[#1e293b] sm:text-[20px]">{c.ingredientsTitle}</h2>
-              <ul className="mt-2">
-                {c.ingredients.map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 border-b border-dashed border-[#8a8f98] py-3 text-[18px] font-semibold text-[#2f343b] last:border-b-0 sm:py-[6px] sm:text-[14px]">
-                    <HandIcon /> <span><RichText text={item} price={priceBn} /></span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-5 text-center sm:mt-3"><OrderButton color={c.colors.ingredientsButton} text={btn} /></div>
-            </div>
-            <div>
-              {c.usageText.trim() && (
-                <>
-                  <h2 className="text-[25px] font-bold text-[#1e293b] sm:text-[20px]">{c.usageTitle}</h2>
-                  <p className="mt-3 flex items-start gap-2 text-[18px] font-bold leading-[1.7] sm:items-center sm:text-[14px] sm:leading-[1.6]">
-                    <HandIcon /> <span className="whitespace-pre-line"><RichText text={c.usageText} price={priceBn} /></span>
-                  </p>
-                </>
-              )}
-              {c.adviceText.trim() && (
-                <>
-                  <h2 className="mt-6 text-[25px] font-bold text-[#1e293b] sm:mt-5 sm:text-[20px]">{c.adviceTitle}</h2>
-                  <p className="mt-3 flex items-start gap-2 text-[18px] font-bold leading-[1.7] sm:items-center sm:text-[14px] sm:leading-[1.6]">
-                    <HandIcon /> <span className="whitespace-pre-line"><RichText text={c.adviceText} price={priceBn} /></span>
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ===== CHECKOUT ===== */}
-      <section id="order" className="scroll-mt-4 bg-[#f3f6f9]">
+      {/* ===== CHECKOUT (always last) ===== */}
+      <section id="order" className="scroll-mt-4" style={{ backgroundColor: t.pageBg }}>
         <div className="mx-auto max-w-[940px] px-0 sm:px-4">
-          <div className="border-t-[3px] border-[#5b62f4] bg-white px-4 pb-12 pt-8 shadow-[0_6px_0_-1px_#e3e6fb] sm:px-7">
+          <div className="border-t-[3px] bg-white px-4 pb-12 pt-8 sm:px-7"
+            style={{ borderTopColor: t.formAccent, boxShadow: `0 6px 0 -1px color-mix(in srgb, ${t.formAccent} 15%, white)` }}>
             <h2 className="text-center text-[26px] font-bold leading-snug text-[#333] sm:text-[30px] sm:text-[#555]">{c.checkoutTitle}</h2>
             <div className="mt-6">
               {product ? (
@@ -259,5 +288,78 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
         orderBar={product ? { text: btn, price: `৳${priceBn}`, ...readableButton(c.colors.topButton) } : undefined} />
       {product && <ViewContentEvent product={{ id: product.id, name: product.name, price: Number(product.price) }} />}
     </div>
+  );
+}
+
+function Stars({ n }: { n: number }) {
+  return (
+    <span className="flex gap-0.5 text-[#f5a623]" aria-label={`${n} / 5`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <svg key={i} viewBox="0 0 24 24" width="20" height="20" fill={i < n ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+          <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+/** A section the admin added: text box, photos, video or customer reviews. */
+function CustomBlock({ block: b, btn, priceBn }: { block: Block; btn: string; priceBn: string }) {
+  if (!b.show) return null;
+  const video = b.type === "video" ? videoEmbed(b.videoUrl) : null;
+  const reviews = b.type === "reviews" ? b.reviews.filter((r) => r.text.trim() || r.image) : [];
+  const empty = (b.type === "text" && !b.title.trim() && !b.text.trim()) || (b.type === "image" && !b.images.length)
+    || (b.type === "video" && !video) || (b.type === "reviews" && !reviews.length);
+  if (empty) return null;
+
+  return (
+    <section className="py-8" style={{ backgroundColor: b.bg, color: b.textColor }}>
+      <div className="mx-auto max-w-[940px] px-4">
+        {b.title.trim() && <h2 className="text-center text-[28px] font-bold leading-snug sm:text-[26px]"><RichText text={b.title} price={priceBn} /></h2>}
+        {b.text.trim() && b.type !== "image" && (
+          <div className={`whitespace-pre-line text-[19px] font-semibold leading-[1.8] sm:text-[16px] sm:leading-[1.75] ${b.title.trim() ? "mt-4" : ""} ${b.type === "text" ? "" : "text-center"}`}>
+            <RichText text={b.text} price={priceBn} />
+          </div>
+        )}
+
+        {b.type === "image" && (
+          <div className={`grid gap-4 ${b.title.trim() ? "mt-5" : ""} ${b.images.length > 1 ? "sm:grid-cols-2" : ""}`}>
+            {b.images.map((f) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={f} {...responsive(`/media/${f}`, b.images.length > 1 ? "(min-width: 640px) 450px, calc(100vw - 32px)" : "(min-width: 940px) 908px, calc(100vw - 32px)", [384, 512, 640, 828])}
+                alt={b.title || "ছবি"} loading="lazy" decoding="async" className="mx-auto h-auto w-full rounded-2xl shadow-md sm:rounded-xl" />
+            ))}
+          </div>
+        )}
+        {b.type === "image" && b.text.trim() && (
+          <p className="mt-4 whitespace-pre-line text-center text-[18px] font-semibold leading-relaxed sm:text-[15px]"><RichText text={b.text} price={priceBn} /></p>
+        )}
+
+        {video && (
+          <div className={`mx-auto max-w-[760px] ${b.title.trim() || b.text.trim() ? "mt-5" : ""}`}>
+            <VideoEmbed embed={video.embed} thumb={video.thumb} title={b.title} />
+          </div>
+        )}
+
+        {reviews.length > 0 && (
+          <div className={`grid gap-4 sm:grid-cols-2 ${b.title.trim() || b.text.trim() ? "mt-6" : ""}`}>
+            {reviews.map((r, i) => (
+              <figure key={i} className="rounded-2xl bg-white p-5 text-[#1f2937] shadow-md ring-1 ring-black/5">
+                <Stars n={r.stars} />
+                {r.text.trim() && <blockquote className="mt-3 whitespace-pre-line text-[18px] font-semibold leading-[1.7] sm:text-[15px]">“<RichText text={r.text} price={priceBn} />”</blockquote>}
+                {r.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img {...responsive(`/media/${r.image}`, "(min-width: 640px) 420px, calc(100vw - 72px)", [384, 512, 640, 828])} alt={r.name ? `${r.name} — রিভিউ` : "কাস্টমার রিভিউ"}
+                    loading="lazy" decoding="async" className="mt-3 h-auto w-full rounded-xl ring-1 ring-black/5" />
+                )}
+                {r.name.trim() && <figcaption className="mt-3 text-[16px] font-bold text-[#0f5132] sm:text-[14px]">— {r.name}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        )}
+
+        {b.button && <div className="mt-7 text-center"><OrderButton color={b.buttonColor} text={btn} /></div>}
+      </div>
+    </section>
   );
 }

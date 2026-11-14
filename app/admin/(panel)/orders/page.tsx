@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { can, requirePermission } from "@/lib/auth";
-import { listOrders, statusCounts, timeSlotCounts, TIME_SLOTS, zoneLabel } from "@/lib/data/orders";
+import { campaignStats, listOrders, statusCounts, timeSlotCounts, TIME_SLOTS, zoneLabel } from "@/lib/data/orders";
 import { listLandingOptions } from "@/lib/data/landings";
 import { isPaymentMethod, PAYMENT_LABEL, PAYMENT_METHODS, PAYMENT_STATUS_META, type PaymentStatus } from "@/lib/payments";
 import { ORDER_STATUSES, STATUS_META } from "@/lib/format";
@@ -36,22 +36,24 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
     landing: Number(str(sp.landing)) || (/^ld+$/.test(str(sp.source)) ? Number(str(sp.source).slice(1)) : 0),
     method: str(sp.method),
     time: TIME_SLOTS.some((t) => t.id === str(sp.time)) ? str(sp.time) : "",
+    campaign: str(sp.campaign).slice(0, 200),
   };
-  const [result, counts, landings, slotCounts] = await Promise.all([listOrders(filters), statusCounts(), listLandingOptions(), timeSlotCounts(filters)]);
+  const [result, counts, landings, slotCounts, campaigns] = await Promise.all([listOrders(filters), statusCounts(), listLandingOptions(), timeSlotCounts(filters), campaignStats()]);
+  const activeCampaign = campaigns.find((c) => c.campaign === filters.campaign);
   const landingName = (id: number | null) => landings.find((l) => l.id === id)?.name ?? null;
 
   const qs = (over: Record<string, string | number>) => {
     const p = new URLSearchParams();
     const merged = {
       status: filters.status, q: filters.q, from: filters.from, to: filters.to, per: filters.perPage === 20 ? "" : String(filters.perPage),
-      payment: filters.payment, source: filters.source, landing: filters.landing ? String(filters.landing) : "", method: filters.method, time: filters.time, ...over,
+      payment: filters.payment, source: filters.source, landing: filters.landing ? String(filters.landing) : "", method: filters.method, time: filters.time, campaign: filters.campaign, ...over,
     };
     for (const [k, v] of Object.entries(merged)) if (v && !(k === "status" && v === "all") && !(k === "page" && String(v) === "1")) p.set(k, String(v));
     const s = p.toString();
     return s ? `?${s}` : "";
   };
   const exportQs = qs({ page: 1 });
-  const hasFilters = filters.q || filters.from || filters.to || filters.payment || filters.source || filters.landing || filters.method || filters.time;
+  const hasFilters = filters.q || filters.from || filters.to || filters.payment || filters.source || filters.landing || filters.method || filters.time || filters.campaign;
 
   return (
     <>
@@ -81,7 +83,7 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input name="q" defaultValue={filters.q} placeholder="Search order no, phone, name or address…" className="a-input pl-9" />
         </div>
-        <div className="grid grid-cols-3 gap-3 sm:col-span-4 sm:grid-cols-3 lg:max-w-2xl">
+        <div className="grid grid-cols-2 gap-3 sm:col-span-4 sm:grid-cols-4 lg:max-w-4xl">
           <select name="source" defaultValue={filters.landing ? `l${filters.landing}` : filters.source} className="a-input" aria-label="Source">
             <option value="">All sources</option>
             <option value="store">Main site (shop)</option>
@@ -99,6 +101,11 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
           <select name="payment" defaultValue={filters.payment} className="a-input" aria-label="Payment status">
             <option value="">Any payment</option>
             {(Object.keys(PAYMENT_STATUS_META) as PaymentStatus[]).map((s) => <option key={s} value={s}>{PAYMENT_STATUS_META[s].label}</option>)}
+          </select>
+          <select name="campaign" defaultValue={filters.campaign} className="a-input" aria-label="Ad campaign">
+            <option value="">All campaigns</option>
+            {campaigns.map((c) => <option key={c.campaign} value={c.campaign}>{c.campaign} · {c.orders} order{c.orders === 1 ? "" : "s"}</option>)}
+            {filters.campaign && !activeCampaign && <option value={filters.campaign}>{filters.campaign}</option>}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:contents">
@@ -131,6 +138,27 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
         </div>
       </form>
 
+      {activeCampaign && (
+        <div className="mb-4 grid grid-cols-2 gap-3 rounded-2xl bg-linear-to-r from-brand-900 to-brand-700 p-4 text-white shadow-sm sm:grid-cols-5 sm:items-center">
+          <div className="col-span-2 min-w-0 sm:col-span-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Campaign · last 90 days</p>
+            <p className="truncate font-mono text-sm font-semibold" title={activeCampaign.campaign}>{activeCampaign.campaign}</p>
+            {activeCampaign.source && <p className="text-xs text-white/70">source: {activeCampaign.source}</p>}
+          </div>
+          {[
+            ["Orders", activeCampaign.orders.toLocaleString("en-IN")],
+            ["Revenue", `৳${Math.round(activeCampaign.revenue).toLocaleString("en-IN")}`],
+            ["Delivered", `${activeCampaign.delivered}`],
+            ["Cancelled / returned", `${activeCampaign.cancelled}${activeCampaign.orders ? ` · ${Math.round((activeCampaign.cancelled / activeCampaign.orders) * 100)}%` : ""}`],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-xl bg-white/10 px-3 py-2">
+              <p className="text-[11px] text-white/70">{k}</p>
+              <p className="text-lg font-semibold tabular-nums">{v}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="a-card overflow-hidden">
         {result.rows.length === 0 ? (
           <EmptyState title="No orders match" text={hasFilters ? "Try different search terms or dates." : "New orders will show up here."} />
@@ -139,6 +167,7 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
             id: o.id, order_no: o.order_no, customer_name: o.customer_name, phone: o.phone, address: o.address,
             total: Number(o.total), status: o.status, zone: zoneLabel(o), items: Number(o.item_count),
             origin: o.source === "store" ? "Shop" : landingName(o.landing_id) ?? "Landing",
+            campaign: o.utm_campaign, utmSource: o.utm_source,
             created_at: new Date(o.created_at).toISOString(), note: o.note,
             pay: isPaymentMethod(o.payment_method) && o.payment_method !== "cod" ? {
               method: PAYMENT_LABEL[o.payment_method], status: o.payment_status,

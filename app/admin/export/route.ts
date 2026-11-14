@@ -25,16 +25,17 @@ export async function GET(request: Request) {
     landing: Number(sp.get("landing")) || undefined,
     method: sp.get("method") ?? undefined,
     time: sp.get("time") ?? undefined,
+    campaign: sp.get("campaign") ?? undefined,
   });
 
   await logActivity({ actor: admin, action: "order.exported", module: "orders", description: `Exported ${rows.length} order(s) to CSV` });
   const landings = await listLandingOptions();
-  const header = ["Order No", "Date", "Source", "Status", "Payment", "Payment status", "Transaction ID", "Customer", "Phone", "Address", "Zone", "Items", "Subtotal", "Shipping", "Discount", "Total", "Note", "Extra fields", "Admin Note"];
+  const header = ["Order No", "Date", "Source", "Status", "Payment", "Payment status", "Transaction ID", "Customer", "Phone", "Address", "Zone", "Items", "Subtotal", "Shipping", "Discount", "Total", "Note", "Extra fields", "Admin Note", "UTM source", "UTM campaign"];
   const lines = rows.map((o) =>
     [o.order_no, o.created_at, o.source === "store" ? "Main site" : `Landing: ${landings.find((l) => l.id === o.landing_id)?.name ?? "—"}`,
      o.status, o.payment_method, o.payment_status, o.payment_trx, o.customer_name, o.phone, o.address, zoneLabel(o), o.items, o.subtotal,
      o.shipping_charge, o.discount, o.total, o.note,
-     parseCustomFields(o.custom_fields).map((c) => c.label + ": " + c.value).join(" | "), o.admin_note].map(csvCell).join(","),
+     parseCustomFields(o.custom_fields).map((c) => c.label + ": " + c.value).join(" | "), o.admin_note, o.utm_source, o.utm_campaign].map(csvCell).join(","),
   );
   // BOM so Excel opens Bangla text correctly.
   const body = "﻿" + [header.map(csvCell).join(","), ...lines].join("\r\n");

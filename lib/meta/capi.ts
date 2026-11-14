@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { execute, query, queryOne } from "../db";
-import { getMarketingConfig, type MarketingConfig, type PixelEntry } from "./config";
+import { getLandingPixelScopes, getMarketingConfig, pixelsFor, type MarketingConfig, type PixelEntry } from "./config";
 import type { EventName } from "./shared";
 
 /** Hashed and raw user parameters accepted by the Conversions API. */
@@ -100,12 +100,15 @@ async function logEvent(e: ServerEvent, pixelId: string, result: SendResult, opt
   }
 }
 
-/** Sends events to every configured pixel and logs each delivery. Never throws. */
-export async function sendServerEvents(events: ServerEvent[], opts: { orderId?: number; testCode?: string } = {}): Promise<SendResult> {
+/**
+ * Sends events to the pixels of the page they came from (a landing page's own pixels, or the main site's)
+ * and logs each delivery. Never throws.
+ */
+export async function sendServerEvents(events: ServerEvent[], opts: { orderId?: number; testCode?: string; landingId?: number | null } = {}): Promise<SendResult> {
   const config = await getMarketingConfig();
-  const pixels = config.pixels.filter((p) => p.token);
+  const pixels = (await pixelsFor(opts.landingId)).filter((p) => p.token);
   const wanted = events.filter((e) => config.events[e.event_name as EventName] !== false);
-  if (!config.capiEnabled || !pixels.length || !wanted.length) {
+  if (!config.capiSwitch || !pixels.length || !wanted.length) {
     return { ok: false, status: null, message: "Conversions API is disabled for this event" };
   }
 
@@ -134,15 +137,17 @@ export async function sendServerEvents(events: ServerEvent[], opts: { orderId?: 
 /** Re-sends failed events (last 7 days — Meta rejects older event times) with their original payload. */
 export async function retryFailedEvents(): Promise<{ retried: number; succeeded: number }> {
   const config = await getMarketingConfig();
-  if (!config.capiEnabled) return { retried: 0, succeeded: 0 };
+  if (!config.capiSwitch) return { retried: 0, succeeded: 0 };
   const rows = await query<{ id: number; pixel_id: string; payload: string; order_id: number | null; is_test: number }>(
     `SELECT id, pixel_id, payload, order_id, is_test FROM pixel_event_log
      WHERE success = 0 AND retried = 0 AND payload IS NOT NULL AND created_at >= NOW() - INTERVAL 7 DAY
      ORDER BY id LIMIT 200`,
   );
+  // Main site pixels and every landing page's own pixels.
+  const allPixels = [...config.pixels, ...(await getLandingPixelScopes()).flatMap((sc) => sc.pixels)];
   let succeeded = 0;
   for (const row of rows) {
-    const pixel = config.pixels.find((p) => p.id === row.pixel_id && p.token);
+    const pixel = allPixels.find((p) => p.id === row.pixel_id && p.token);
     await execute("UPDATE pixel_event_log SET retried = 1 WHERE id = ?", [row.id]);
     if (!pixel) continue;
     let event: ServerEvent;
@@ -191,6 +196,7 @@ export async function verifyPixels(): Promise<PixelCheck[]> {
 type OrderForPixel = {
   id: number;
   order_no: string;
+  landing_id: number | null;
   customer_name: string;
   phone: string;
   subtotal: number;
@@ -210,7 +216,7 @@ export async function sendPurchaseForOrder(orderId: number, { force = false } = 
   const config = await getMarketingConfig();
   if (!config.events.Purchase) return { ok: false, status: null, message: "Purchase event is turned off" };
   const order = await queryOne<OrderForPixel>(
-    `SELECT id, order_no, customer_name, phone, subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, pixel_purchase_sent_at
+    `SELECT id, order_no, customer_name, phone, subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, pixel_purchase_sent_at, landing_id
      FROM orders WHERE id = ?`,
     [orderId],
   );
@@ -245,7 +251,7 @@ export async function sendPurchaseForOrder(orderId: number, { force = false } = 
         },
       },
     ],
-    { orderId },
+    { orderId, landingId: order.landing_id },
   );
   if (result.ok) await execute("UPDATE orders SET pixel_purchase_sent_at = NOW() WHERE id = ?", [orderId]);
   return result;
@@ -267,7 +273,7 @@ export async function sendStatusEventForOrder(orderId: number, kind: StatusEvent
   const config = await getMarketingConfig();
   if (!config.events[ev.name]) return { ok: false, status: null, message: `${ev.name} event is turned off` };
   const order = await queryOne<OrderForPixel & { sent_at: Date | null }>(
-    `SELECT id, order_no, customer_name, phone, subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, pixel_purchase_sent_at,
+    `SELECT id, order_no, customer_name, phone, subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, pixel_purchase_sent_at, landing_id,
             ${ev.column} AS sent_at
      FROM orders WHERE id = ?`,
     [orderId],
@@ -306,7 +312,7 @@ export async function sendStatusEventForOrder(orderId: number, kind: StatusEvent
         },
       },
     ],
-    { orderId },
+    { orderId, landingId: order.landing_id },
   );
   if (result.ok) await execute(`UPDATE orders SET ${ev.column} = NOW() WHERE id = ?`, [orderId]);
   return result;

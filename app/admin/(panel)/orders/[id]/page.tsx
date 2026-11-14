@@ -8,6 +8,7 @@ import { query, queryOne } from "@/lib/db";
 import { dateTime, money, STATUS_META } from "@/lib/format";
 import { blockOrderIp, deleteOrder, unblockIp } from "@/app/actions/admin";
 import { blockedIpFor } from "@/lib/ip-block";
+import { AttributionCard } from "@/components/admin/attribution-card";
 import { PageHeader, PanelSkeleton, StatusBadge } from "@/components/admin/ui";
 import { AlertIcon, ChevronLeftIcon, PhoneIcon, PrinterIcon, WhatsappIcon } from "@/components/icons";
 import { DeleteOrderButton, OrderDetailsForm, ResendPurchaseButton, StatusForm } from "./order-forms";
@@ -251,6 +252,8 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
             </section>
           )}
 
+          <AttributionCard raw={order.attribution} />
+
           <section className="a-card p-5 text-xs text-slate-500">
             <h2 className="mb-2 text-sm font-medium text-slate-900">Technical</h2>
             <CheckoutTime page={order.page_seconds} form={order.checkout_seconds} />
@@ -285,9 +288,9 @@ async function OrderView({ params }: Pick<PageProps<"/admin/orders/[id]">, "para
             <p className="mt-1 text-sm">
               {order.pixel_purchase_sent_at
                 ? <span className="text-emerald-700">Sent {dateTime(order.pixel_purchase_sent_at)}</span>
-                : <span className="text-slate-500">Not sent{marketing.capiEnabled && marketing.purchaseTrigger !== "placed" ? ` — will be sent when the order is ${marketing.purchaseTrigger}` : ""}</span>}
+                : <span className="text-slate-500">Not sent{marketing.capiSwitch && marketing.purchaseTrigger !== "placed" ? ` — will be sent when the order is ${marketing.purchaseTrigger}` : ""}</span>}
             </p>
-            {marketing.capiEnabled && can(admin, "marketing.manage")
+            {marketing.capiSwitch && can(admin, "marketing.manage")
               ? <ResendPurchaseButton id={order.id} sent={!!order.pixel_purchase_sent_at} />
               : <p className="mt-1 text-xs text-slate-400">Conversions API is off — set it up under Facebook Pixel.</p>}
             {(order.pixel_delivered_sent_at || order.pixel_cancelled_sent_at) && (

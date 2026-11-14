@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
-import { getMarketingConfig, MAX_PIXELS } from "@/lib/meta/config";
+import { getLandingPixelScopes, getMarketingConfig, MAX_PIXELS } from "@/lib/meta/config";
 import { dateTime } from "@/lib/format";
 import { EmptyState, PageHeader, Pagination, PanelSkeleton } from "@/components/admin/ui";
 import { EVENT_NAMES } from "@/lib/meta/shared";
@@ -165,7 +165,12 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
   });
 
   const withToken = config.pixels.filter((p) => p.token).length;
-  const pixelLabel = new Map(config.pixels.map((p) => [p.id, p.label]));
+  const scopes = await getLandingPixelScopes();
+  // Landing pages with their own pixels show up in the log too — label them by page.
+  const pixelLabel = new Map<string, string>([
+    ...scopes.flatMap((sc) => sc.pixels.map((p) => [p.id, `${p.label || "Pixel"} · /${sc.slug}`] as [string, string])),
+    ...config.pixels.map((p) => [p.id, p.label || "Main site"] as [string, string]),
+  ]);
   const statusCards = [
     {
       label: "Browser Pixel",

@@ -4,11 +4,33 @@ import Link from "next/link";
 import { useActionState, useState, type ReactNode } from "react";
 import { saveLandingContent } from "@/app/actions/admin";
 import { initialState } from "@/lib/action-state";
-import { DEFAULT_CONTENT, type Faq, type LandingContent } from "@/lib/content";
+import { DEFAULT_CONTENT, type Block, type Faq, type LandingContent, type LandingTheme } from "@/lib/content";
+import { BlockFields, blockName, Color, LayoutEditor } from "./block-editor";
 import { FormAlert, SubmitButton } from "@/components/form-bits";
 import { ChevronDownIcon, PlusIcon, TrashIcon } from "@/components/icons";
 
 type ColorKey = keyof LandingContent["colors"];
+type ThemeKey = keyof LandingTheme;
+
+const THEME_LABELS: [ThemeKey, string][] = [
+  ["heroFrom", "Top section color (gradient start)"],
+  ["heroTo", "Top section fades into"],
+  ["pageBg", "Page background"],
+  ["altBg", "Price / ingredients background"],
+  ["headingColor", "Headings"],
+  ["benefitsTitleBg", "Benefits title highlight"],
+  ["benefitsTitleText", "Benefits title text"],
+  ["formAccent", "Order form top line"],
+];
+
+/** Ready-made color sets — one click restyles the page (buttons keep their own colors). */
+const THEME_PRESETS: { name: string; theme: LandingTheme }[] = [
+  { name: "Fresh green (original)", theme: DEFAULT_CONTENT.theme },
+  { name: "Ocean blue", theme: { heroFrom: "#7cc4ff", heroTo: "#f1f6fb", pageBg: "#f1f6fb", altBg: "#e6eef7", headingColor: "#0b2545", benefitsTitleBg: "#ffd60a", benefitsTitleText: "#0b2545", formAccent: "#1d4ed8" } },
+  { name: "Warm orange", theme: { heroFrom: "#ffc078", heroTo: "#fff8f0", pageBg: "#fff8f0", altBg: "#fdeedc", headingColor: "#3b1d00", benefitsTitleBg: "#ff6b00", benefitsTitleText: "#ffffff", formAccent: "#ea580c" } },
+  { name: "Royal purple", theme: { heroFrom: "#c9a7ff", heroTo: "#f6f2fd", pageBg: "#f6f2fd", altBg: "#ede5fb", headingColor: "#2e1065", benefitsTitleBg: "#facc15", benefitsTitleText: "#4c1d95", formAccent: "#7c3aed" } },
+  { name: "Clean white", theme: { heroFrom: "#e2e8f0", heroTo: "#ffffff", pageBg: "#ffffff", altBg: "#f8fafc", headingColor: "#0f172a", benefitsTitleBg: "#dcfce7", benefitsTitleText: "#166534", formAccent: "#16a34a" } },
+];
 
 const COLOR_LABELS: [ColorKey, string][] = [
   ["topButton", "1st order button (top)"],
@@ -153,6 +175,9 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
     setDirty(true);
   };
   const setColor = (key: ColorKey, value: string) => set("colors", { ...c.colors, [key]: value });
+  const setTheme = (key: ThemeKey, value: string) => set("theme", { ...c.theme, [key]: value });
+  const patch = (fn: (prev: LandingContent) => LandingContent) => { setC(fn); setDirty(true); };
+  const setBlock = (b: Block) => set("blocks", c.blocks.map((x) => (x.id === b.id ? b : x)));
 
   return (
     <form action={action} onSubmit={() => setDirty(false)} className="space-y-4 pb-36 lg:pb-24">
@@ -165,7 +190,17 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
         The product photo comes from <Link href="/admin/products" className="font-medium underline">Products</Link>; the label banner is set on the Setup tab.
       </div>
 
-      <Section title="Top section" hint="Doctor caption under the photo, approval heading and button text" defaultOpen>
+      <Section title="Page layout" hint="Order of the sections, show / hide, and add new sections (text, photos, video, customer reviews)" defaultOpen>
+        <LayoutEditor c={c} patch={patch} />
+      </Section>
+
+      {c.blocks.map((b) => (
+        <Section key={b.id} title={blockName(b)} hint={b.show ? "Custom section" : "Custom section — hidden"}>
+          <BlockFields block={b} onChange={setBlock} />
+        </Section>
+      ))}
+
+      <Section title="Top section" hint="Doctor caption under the photo, approval heading and button text">
         <Text label="Doctor caption (under the product photo)" rows={3} value={c.doctorCaption} onChange={(v) => set("doctorCaption", v)} />
         <Text label="Approval heading" value={c.approvalHeading} onChange={(v) => set("approvalHeading", v)} />
         <Text label="Order button text (used on every button)" value={c.orderButtonText} onChange={(v) => set("orderButtonText", v)} />
@@ -214,6 +249,21 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
         <Text label="Order form heading" value={c.checkoutTitle} onChange={(v) => set("checkoutTitle", v)} />
         <Text label="Thank-you page title" value={c.thankyouTitle} onChange={(v) => set("thankyouTitle", v)} />
         <Text label="Thank-you page subtitle" value={c.thankyouSubtitle} onChange={(v) => set("thankyouSubtitle", v)} />
+      </Section>
+
+      <Section title="Theme & background colors" hint="Page colors — pick a ready-made set or choose each color">
+        <div className="flex flex-wrap gap-2">
+          {THEME_PRESETS.map((p) => (
+            <button key={p.name} type="button" onClick={() => set("theme", p.theme)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+              <span className="h-4 w-8 rounded" style={{ backgroundImage: `linear-gradient(90deg, ${p.theme.heroFrom}, ${p.theme.pageBg})` }} />
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {THEME_LABELS.map(([key, label]) => <Color key={key} label={label} value={c.theme[key]} onChange={(v) => setTheme(key, v)} />)}
+        </div>
       </Section>
 
       <Section title="Colors" hint="Buttons, intro box and benefit cards">

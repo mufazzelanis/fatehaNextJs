@@ -379,3 +379,16 @@ CREATE TABLE IF NOT EXISTS blocked_ips (
 -- Conversions API status events (sent once per order)
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS pixel_delivered_sent_at DATETIME NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS pixel_cancelled_sent_at DATETIME NULL;
+
+-- Order attribution: first / last visit (UTM tags, referrer, landing page) and the customer's browser time
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS attribution TEXT NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS utm_source VARCHAR(120) NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS utm_campaign VARCHAR(200) NULL;
+ALTER TABLE orders ADD INDEX IF NOT EXISTS idx_orders_campaign (utm_campaign, created_at);
+
+-- Per-landing Facebook pixels: 'main' = use the main site pixels, 'own' = only this page's pixels, 'both'
+ALTER TABLE landing_pages ADD COLUMN IF NOT EXISTS pixel_mode VARCHAR(8) NOT NULL DEFAULT 'main';
+ALTER TABLE landing_pages ADD COLUMN IF NOT EXISTS pixels TEXT NULL;
+
+-- Live visitors on the main site too (landing_id 0 = main site); the page the visitor is on now
+ALTER TABLE landing_visits ADD COLUMN IF NOT EXISTS page VARCHAR(160) NULL;

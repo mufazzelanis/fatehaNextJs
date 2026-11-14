@@ -92,7 +92,7 @@ export function LiveVisitorsTable({ initial }: { initial: LiveStats }) {
         <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">{data.total} active</span>
       </div>
       {data.active.length === 0 ? (
-        <p className="px-5 py-10 text-center text-sm text-slate-500">Nobody is on a landing page right now. Visitors appear here the moment they open one.</p>
+        <p className="px-5 py-10 text-center text-sm text-slate-500">Nobody is on the website or a landing page right now. Visitors appear here the moment they open one.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
@@ -101,7 +101,7 @@ export function LiveVisitorsTable({ initial }: { initial: LiveStats }) {
                 <th className="px-5 py-2.5 font-medium">Visitor IP</th>
                 <th className="px-3 py-2.5 font-medium">Device &amp; browser</th>
                 <th className="px-3 py-2.5 font-medium">Came from</th>
-                <th className="px-3 py-2.5 font-medium">Landing page</th>
+                <th className="px-3 py-2.5 font-medium">Page</th>
                 <th className="px-3 py-2.5 font-medium">Where on the page</th>
                 <th className="px-3 py-2.5 font-medium">Time on page</th>
                 <th className="px-5 py-2.5 font-medium">Order button</th>

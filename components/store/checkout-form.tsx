@@ -237,7 +237,7 @@ export function StoreCheckout({ store, payments, methods, prefill }: {
           </dl>
           <div className="space-y-3 px-5 pb-5">
             {state.error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{state.error}</p>}
-            <button type="submit" disabled={pending}
+            <button type="submit" data-track="submit" disabled={pending}
               className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-fb-500 text-base font-bold text-white shadow-lg shadow-fb-500/30 transition hover:bg-fb-600 active:scale-[0.99] disabled:opacity-70">
               {pending ? <><Spinner className="size-5" /> Placing order…</> : <>Place order · {bdt(total)}</>}
             </button>

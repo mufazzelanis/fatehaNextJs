@@ -37,7 +37,91 @@ export type LandingContent = {
     benefitCard: string;
     benefitText: string;
   };
+  /** Page background colors (hero gradient, section backgrounds, headings). */
+  theme: LandingTheme;
+  /** Order of the sections between the hero (always first) and the order form (always last). */
+  layout: SectionKey[];
+  /** Extra sections the admin adds: text, image, video, customer reviews. Placed via `layout` ("b:<id>"). */
+  blocks: Block[];
 };
+
+export type LandingTheme = {
+  heroFrom: string;
+  heroTo: string;
+  pageBg: string;
+  altBg: string;
+  headingColor: string;
+  benefitsTitleBg: string;
+  benefitsTitleText: string;
+  formAccent: string;
+};
+
+/** Built-in sections that can be moved around. Custom blocks are "b:<id>". */
+export const BUILTIN_SECTIONS = ["approval", "intro", "benefits", "cta", "price", "faq", "ingredients"] as const;
+export type BuiltinSection = (typeof BUILTIN_SECTIONS)[number];
+export type SectionKey = BuiltinSection | `b:${string}`;
+
+export const SECTION_NAMES: Record<BuiltinSection, string> = {
+  approval: "Approval heading + 1st order button",
+  intro: "Intro text box",
+  benefits: "Benefits (কার্যকারীতা)",
+  cta: "2nd order button",
+  price: "Price section",
+  faq: "Questions & answers",
+  ingredients: "Ingredients, usage & advice",
+};
+
+export const BLOCK_TYPES = ["text", "image", "video", "reviews"] as const;
+export type BlockType = (typeof BLOCK_TYPES)[number];
+export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
+  text: "Text box", image: "Image / photos", video: "Video (YouTube / Facebook)", reviews: "Customer reviews",
+};
+export type Review = { name: string; text: string; stars: number; image: string };
+export type Block = {
+  id: string;
+  type: BlockType;
+  show: boolean;
+  title: string;
+  text: string;
+  /** Uploaded file names (served from /media/<file>). */
+  images: string[];
+  videoUrl: string;
+  reviews: Review[];
+  bg: string;
+  textColor: string;
+  /** Show an order button under the block. */
+  button: boolean;
+  buttonColor: string;
+};
+
+export const MAX_BLOCKS = 20;
+
+export function newBlock(type: BlockType, id: string): Block {
+  return {
+    id, type, show: true, title: "", text: "", images: [], videoUrl: "", reviews: type === "reviews" ? [{ name: "", text: "", stars: 5, image: "" }] : [],
+    bg: "#ffffff", textColor: "#111111", button: true, buttonColor: "#e11d1d",
+  };
+}
+
+/** YouTube / Facebook link → embeddable player URL (null if it is not a supported video link). */
+export function videoEmbed(url: string): { kind: "youtube" | "facebook"; id: string; embed: string; thumb: string | null } | null {
+  let u: URL;
+  try { u = new URL(url.trim()); } catch { return null; }
+  const host = u.hostname.replace(/^www\.|^m\./, "");
+  let yt: string | null = null;
+  if (host === "youtu.be") yt = u.pathname.slice(1);
+  else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    yt = u.searchParams.get("v") ?? u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]+)/)?.[1] ?? null;
+  }
+  if (yt && /^[\w-]{6,20}$/.test(yt)) {
+    return { kind: "youtube", id: yt, embed: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0&playsinline=1`, thumb: `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` };
+  }
+  if ((host === "facebook.com" || host === "fb.watch") && u.protocol === "https:") {
+    const href = `https://${host === "fb.watch" ? "fb.watch" : "www.facebook.com"}${u.pathname}${u.search}`;
+    return { kind: "facebook", id: href, embed: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&autoplay=true`, thumb: null };
+  }
+  return null;
+}
 
 export const DEFAULT_CONTENT: LandingContent = {
   doctorCaption: "ডা. মোঃ ওমর ফারুক সালমান\nসাঈদ ইষ্টার্ন মেডিক্যাল কলেজ এন্ড হসপিটাল\nসিনিয়র মেডিকেল অফিসার(আরগন ফার্মাসিউটিক্যাল)",
@@ -104,7 +188,60 @@ export const DEFAULT_CONTENT: LandingContent = {
     benefitCard: "#2a1b76",
     benefitText: "#7ff0ea",
   },
+  theme: {
+    heroFrom: "#8df28d",
+    heroTo: "#f3f6f9",
+    pageBg: "#f3f6f9",
+    altBg: "#efefef",
+    headingColor: "#111111",
+    benefitsTitleBg: "#b6f20f",
+    benefitsTitleText: "#e8232a",
+    formAccent: "#5b62f4",
+  },
+  layout: [...BUILTIN_SECTIONS],
+  blocks: [],
 };
+
+const FILE = /^[\w.-]{1,120}\.(?:jpe?g|png|webp)$/i;
+
+function normalizeBlock(raw: unknown): Block | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const type = BLOCK_TYPES.find((t) => t === r.type);
+  const id = typeof r.id === "string" && /^[a-z0-9]{4,16}$/.test(r.id) ? r.id : null;
+  if (!type || !id) return null;
+  const d = newBlock(type, id);
+  const color = (v: unknown, def: string) => (typeof v === "string" && HEX.test(v) ? v : def);
+  const files = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && FILE.test(x)).slice(0, 12) : []);
+  const reviews = Array.isArray(r.reviews)
+    ? r.reviews.flatMap((x): Review[] => {
+        if (!x || typeof x !== "object") return [];
+        const v = x as Record<string, unknown>;
+        return [{
+          name: str(v.name, "", 80), text: str(v.text, "", 2000),
+          stars: Math.min(Math.max(Math.round(Number(v.stars) || 5), 1), 5),
+          image: typeof v.image === "string" && FILE.test(v.image) ? v.image : "",
+        }];
+      }).slice(0, 30)
+    : d.reviews;
+  return {
+    id, type, show: bool(r.show, true), title: str(r.title, "", 300), text: str(r.text, "", 10000), images: files(r.images),
+    videoUrl: str(r.videoUrl, "", 500), reviews, bg: color(r.bg, d.bg), textColor: color(r.textColor, d.textColor),
+    button: bool(r.button, d.button), buttonColor: color(r.buttonColor, d.buttonColor),
+  };
+}
+
+/** Section order: known keys only, no duplicates; built-in sections missing from an older save are appended. */
+function normalizeLayout(raw: unknown, blocks: Block[]): SectionKey[] {
+  const ids = new Set(blocks.map((b) => `b:${b.id}`));
+  const valid = (k: unknown): k is SectionKey =>
+    typeof k === "string" && ((BUILTIN_SECTIONS as readonly string[]).includes(k) || ids.has(k));
+  const out: SectionKey[] = [];
+  for (const k of Array.isArray(raw) ? raw : []) if (valid(k) && !out.includes(k)) out.push(k);
+  for (const k of BUILTIN_SECTIONS) if (!out.includes(k)) out.push(k);
+  for (const b of blocks) if (!out.includes(`b:${b.id}`)) out.push(`b:${b.id}`);
+  return out;
+}
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const str = (v: unknown, fallback: string, max = 5000) => (typeof v === "string" ? v.slice(0, max) : fallback);
@@ -126,6 +263,15 @@ export function normalizeContent(raw: unknown): LandingContent {
         .map((f) => ({ q: f.q.slice(0, 1000), a: f.a.slice(0, 5000) }))
         .slice(0, 30)
     : d.faqs;
+  const t = (r.theme && typeof r.theme === "object" ? r.theme : {}) as Record<string, unknown>;
+  const theme = Object.fromEntries(
+    Object.entries(d.theme).map(([k, def]) => [k, typeof t[k] === "string" && HEX.test(t[k] as string) ? t[k] : def]),
+  ) as LandingTheme;
+  const seen = new Set<string>();
+  const blocks = (Array.isArray(r.blocks) ? r.blocks : [])
+    .map(normalizeBlock)
+    .filter((b): b is Block => !!b && !seen.has(b.id) && !!seen.add(b.id))
+    .slice(0, MAX_BLOCKS);
 
   return {
     doctorCaption: str(r.doctorCaption, d.doctorCaption),
@@ -152,5 +298,8 @@ export function normalizeContent(raw: unknown): LandingContent {
     thankyouTitle: str(r.thankyouTitle, d.thankyouTitle),
     thankyouSubtitle: str(r.thankyouSubtitle, d.thankyouSubtitle),
     colors,
+    theme,
+    layout: normalizeLayout(r.layout, blocks),
+    blocks,
   };
 }

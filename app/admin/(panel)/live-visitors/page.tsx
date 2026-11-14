@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { requirePermission } from "@/lib/auth";
-import { getClickHistory, getLiveStats, getTrafficReport, type TrafficFilter } from "@/lib/data/live";
+import { getClickHistory, getLiveStats, getTrafficReport, MAIN_SITE_FILTER, type TrafficFilter } from "@/lib/data/live";
 import { listLandingOptions } from "@/lib/data/landings";
 import { DEVICE_KIND_LABEL, parseDevice } from "@/lib/device";
-import { DEVICE_LABEL, duration, LIVE_DEVICES, LIVE_SOURCES, SOURCE_LABEL } from "@/lib/live";
+import { DEVICE_LABEL, duration, LIVE_DEVICES, LIVE_SOURCES, MAIN_SITE_LABEL, SOURCE_LABEL } from "@/lib/live";
 import { dateTime } from "@/lib/format";
 import { PageHeader, Pagination, PanelSkeleton } from "@/components/admin/ui";
 import { LiveNowCard, LiveVisitorsTable } from "@/components/admin/live-board";
@@ -126,9 +126,10 @@ async function LiveVisitors({ searchParams }: Pick<PageProps<"/admin/live-visito
             </select>
           </label>
           <label className="block">
-            <span className="a-label">Landing page</span>
+            <span className="a-label">Page</span>
             <select name="landing" defaultValue={landingId || ""} className="a-input">
-              <option value="">All landing pages</option>
+              <option value="">All pages (website + landings)</option>
+              <option value={MAIN_SITE_FILTER}>{MAIN_SITE_LABEL}</option>
               {landings.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </label>
@@ -137,7 +138,7 @@ async function LiveVisitors({ searchParams }: Pick<PageProps<"/admin/live-visito
             <Link href="/admin/live-visitors" className="a-btn-outline">Reset</Link>
           </div>
         </form>
-        <p className="text-xs text-slate-500">Showing: <b className="text-slate-700">{periodLabel}</b>{landingId ? ` · ${landings.find((l) => l.id === landingId)?.name ?? ""}` : ""} · visits are kept for 90 days</p>
+        <p className="text-xs text-slate-500">Showing: <b className="text-slate-700">{periodLabel}</b>{landingId ? ` · ${landingId === MAIN_SITE_FILTER ? MAIN_SITE_LABEL : landings.find((l) => l.id === landingId)?.name ?? ""}` : ""} · visits are kept for 90 days</p>
       </section>
 
       {/* KPIs */}
@@ -227,7 +228,7 @@ async function LiveVisitors({ searchParams }: Pick<PageProps<"/admin/live-visito
           </div>
         </section>
         <section className="a-card p-5">
-          <h2 className="font-medium text-slate-900">By landing page</h2>
+          <h2 className="font-medium text-slate-900">By page</h2>
           {report.landings.length === 0 ? <p className="mt-3 text-sm text-slate-500">No visits in this period.</p> : (
             <ul className="mt-3 space-y-3">
               {report.landings.map((l) => (
@@ -269,7 +270,7 @@ async function LiveVisitors({ searchParams }: Pick<PageProps<"/admin/live-visito
                   <th className="px-3 py-2.5 font-medium">Button</th>
                   <th className="px-3 py-2.5 font-medium">Visitor IP</th>
                   <th className="px-3 py-2.5 font-medium">Device</th>
-                  <th className="px-3 py-2.5 font-medium">Landing page</th>
+                  <th className="px-3 py-2.5 font-medium">Page</th>
                   <th className="px-3 py-2.5 font-medium">After</th>
                   <th className="px-5 py-2.5 font-medium">Result</th>
                 </tr>

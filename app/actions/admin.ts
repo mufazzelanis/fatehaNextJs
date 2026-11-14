@@ -57,7 +57,7 @@ async function applyStatus(orderIds: number[], status: OrderStatus, note: string
 /** Sends the Conversions API Purchase for orders that just reached the status chosen in Pixel settings. */
 async function purchaseOnStatus(orderIds: number[], status: OrderStatus) {
   const config = await getMarketingConfig();
-  if (!config.capiEnabled || config.purchaseTrigger === "placed") return;
+  if (!config.capiSwitch || config.purchaseTrigger === "placed") return;
   const qualifies =
     config.purchaseTrigger === "delivered" ? status === "delivered" : ["confirmed", "processing", "shipped", "delivered"].includes(status);
   if (!qualifies) return;
@@ -77,7 +77,7 @@ async function afterStatusChange(changed: { id: number; from: OrderStatus }[], s
   const blocked = status === "cancelled" ? await autoBlockCancelled(ids) : [];
   if ((status === "delivered" || status === "cancelled") && ids.length) {
     const config = await getMarketingConfig();
-    if (config.capiEnabled) {
+    if (config.capiSwitch) {
       after(async () => {
         for (const id of ids) await sendStatusEventForOrder(id, status);
       });

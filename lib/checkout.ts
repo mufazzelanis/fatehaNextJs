@@ -1,3 +1,5 @@
+import { headline, parseAttribution } from "./attribution";
+
 // Client-safe checkout configuration (stored as JSON in settings.checkout_config).
 
 export type FieldConfig = { label: string; placeholder: string };
@@ -148,4 +150,12 @@ export function readCheckoutTiming(formData: FormData) {
     return Number.isFinite(n) && n > 0 && n <= 86_400 ? Math.round(n) : null;
   };
   return { page: sec("t_page"), checkout: sec("t_form") };
+}
+
+/** Order attribution sent by <CheckoutTimer> → columns for the orders table (JSON + the source / campaign used in filters). */
+export function readOrderAttribution(formData: FormData) {
+  const a = parseAttribution(formData.get("attr"));
+  if (!a) return { json: null, source: null, campaign: null };
+  const h = headline(a);
+  return { json: JSON.stringify(a), source: h.source.slice(0, 120) || null, campaign: h.campaign.slice(0, 200) || null };
 }

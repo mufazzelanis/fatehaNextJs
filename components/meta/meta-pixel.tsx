@@ -2,9 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { initPixel, track, type PixelSetup } from "@/lib/meta/pixel-client";
+import { activatePixels, initPixel, pixelsForPage, track, type PixelSetup } from "@/lib/meta/pixel-client";
 
-/** Loads the pixel once and sends a PageView (browser + server) on every public page navigation. */
+/** Loads the pixel(s) for the current page and sends a PageView (browser + server) on every public page navigation. */
 export function MetaPixel({ config }: { config: PixelSetup }) {
   const pathname = usePathname();
   const last = useRef<string | null>(null);
@@ -13,6 +13,8 @@ export function MetaPixel({ config }: { config: PixelSetup }) {
   useEffect(() => {
     if (!tracked || last.current === pathname) return;
     initPixel(config);
+    // Landing pages with their own pixels report to those; everything else to the main site pixels.
+    activatePixels(pixelsForPage(config, pathname, window.location.search));
     last.current = pathname;
     track("PageView");
   }, [pathname, tracked, config]);

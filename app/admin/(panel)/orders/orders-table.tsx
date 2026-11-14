@@ -22,6 +22,8 @@ type Row = {
   note: string | null;
   /** "Shop" or the landing page name */
   origin: string;
+  campaign: string | null;
+  utmSource: string | null;
   pay: { method: string; status: string; label: string; className: string } | null;
 };
 
@@ -164,6 +166,13 @@ export function OrdersTable({ orders, perms }: { orders: Row[]; perms: Perms }) 
                 <td className="max-w-64 px-3 py-3">
                   <p className="line-clamp-2 font-sans text-slate-600" title={o.address}>{o.address}</p>
                   <p className="text-xs text-slate-400">{o.zone} · {o.items} item{o.items === 1 ? "" : "s"} · <span className={o.origin === "Shop" ? "text-sky-600" : "text-brand-700"}>{o.origin}</span></p>
+                  {(o.campaign || o.utmSource) && (
+                    <Link href={o.campaign ? `/admin/orders?campaign=${encodeURIComponent(o.campaign)}` : `/admin/orders/${o.id}`}
+                      className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded bg-blue-50 px-1.5 py-0.5 text-[10.5px] font-medium text-blue-700 ring-1 ring-inset ring-blue-600/15 hover:bg-blue-100"
+                      title={o.campaign ? `Campaign ${o.campaign} — show all its orders` : "Traffic source"}>
+                      {o.utmSource ?? "utm"}{o.campaign ? <span className="truncate font-mono">· {o.campaign}</span> : null}
+                    </Link>
+                  )}
                 </td>
                 <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-900">{money(o.total)}{o.pay && <div className="mt-1"><PayPill pay={o.pay} /></div>}</td>
                 <td className="px-3 py-3"><StatusBadge status={o.status} /></td>

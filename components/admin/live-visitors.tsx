@@ -108,7 +108,7 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
               <span className={`absolute inline-flex size-full rounded-full ${offline ? "bg-amber-400" : "animate-ping bg-emerald-400"} opacity-75`} />
               <span className={`relative inline-flex size-2.5 rounded-full ${offline ? "bg-amber-400" : "bg-emerald-400"}`} />
             </span>
-            {offline ? "Reconnecting…" : "Live · landing pages"}
+            {offline ? "Reconnecting…" : "Live · website + landings"}
             <Link href="/admin/live-visitors" className="ml-auto rounded-full bg-white/10 px-2.5 py-1 text-[10px] tracking-wider text-white ring-1 ring-white/20 transition hover:bg-white/20">Open live page →</Link>
           </div>
           <div className="mt-3 flex items-end gap-3">
@@ -119,7 +119,7 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
               </span>
             )}
           </div>
-          <p className="mt-2 text-sm text-white/70">{data.total === 1 ? "person is" : "people are"} on your landing pages right now</p>
+          <p className="mt-2 text-sm text-white/70">{data.total === 1 ? "person is" : "people are"} on your website &amp; landing pages right now</p>
 
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-xl bg-white/[0.07] px-2 py-2.5 ring-1 ring-white/10">
@@ -155,13 +155,13 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/50">Landing pages</p>
             {data.landings.length === 0 ? (
-              <p className="text-sm text-white/50">No one on a landing page right now.</p>
+              <p className="text-sm text-white/50">No one on the website right now.</p>
             ) : (
               <ul className="space-y-2.5">
                 {data.landings.slice(0, 5).map((l) => (
                   <li key={l.id}>
                     <div className="flex items-center justify-between gap-2 text-sm">
-                      <Link href={`/admin/landings/${l.id}`} className="min-w-0 truncate font-medium hover:underline">{l.name}</Link>
+                      <Link href={l.id ? `/admin/landings/${l.id}` : "/admin/live-visitors?landing=-1"} className="min-w-0 truncate font-medium hover:underline">{l.name}</Link>
                       <span className="shrink-0 tabular-nums"><b>{l.count}</b>{l.form ? <span className="ml-1.5 text-xs text-amber-200">· {l.form} on form</span> : null}</span>
                     </div>
                     <p className="font-mono text-[11px] text-white/45">/{l.slug}</p>
@@ -188,7 +188,7 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
         <div className="min-w-0">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/50">Coming &amp; going</p>
           {data.feed.length === 0 ? (
-            <p className="text-sm text-white/50">Visitors will appear here as they open or close a landing page.</p>
+            <p className="text-sm text-white/50">Visitors will appear here as they open or close a page.</p>
           ) : (
             <ul className="max-h-[19rem] space-y-1.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
               {data.feed.map((e, i) => (

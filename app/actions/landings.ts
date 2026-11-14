@@ -244,3 +244,26 @@ export async function saveInvoiceSettings(_prev: ActionState, formData: FormData
   refresh();
   return { ok: true, message: changes.length ? "Invoice design saved" : "Nothing changed" };
 }
+
+/**
+ * Uploads one picture for a landing content block (image section, review photo).
+ * Returns the stored file name; the content editor saves it with the rest of the content.
+ */
+export async function uploadLandingImage(formData: FormData): Promise<{ file?: string; error?: string }> {
+  const admin = await adminWith("content.manage");
+  if (!admin) return { error: "You don't have permission to do that" };
+  const file = formData.get("image");
+  if (!(file instanceof File) || !file.size) return { error: "Choose an image" };
+  // The browser-reported type can be faked — check the file really starts like a JPG / PNG / WEBP.
+  const head = Buffer.from(await file.slice(0, 12).arrayBuffer());
+  const real = head[0] === 0xff && head[1] === 0xd8 ? "image/jpeg"
+    : head.subarray(0, 4).toString("hex") === "89504e47" ? "image/png"
+    : head.subarray(0, 4).toString() === "RIFF" && head.subarray(8, 12).toString() === "WEBP" ? "image/webp" : null;
+  if (!real || real !== file.type) return { error: "Use a JPG, PNG or WEBP image" };
+  try {
+    return { file: await saveImage(file, "block") };
+  } catch (e) {
+    if (e instanceof ImageError) return { error: e.message };
+    throw e;
+  }
+}

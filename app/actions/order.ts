@@ -14,7 +14,7 @@ import { revalidateStock } from "@/lib/data/catalog";
 import { alertNewOrder } from "@/lib/notify";
 import { logActivity } from "@/lib/activity";
 import { clientIpFrom } from "@/lib/client-ip";
-import { readCheckoutTiming } from "@/lib/checkout";
+import { readCheckoutTiming, readOrderAttribution } from "@/lib/checkout";
 import { isIpBlocked } from "@/lib/ip-block";
 import { getOrderByNo } from "@/lib/data/orders";
 import { normalizePhone } from "@/lib/phone";
@@ -104,6 +104,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   let placed: { no: string; orderId: number };
   try {
     const timing = readCheckoutTiming(formData);
+    const attr = readOrderAttribution(formData);
     placed = await transaction(async (conn) => {
       // Price and stock always come from the database, never from the browser.
       const [productRows] = await conn.query<(Product & RowDataPacket)[]>(
@@ -118,11 +119,11 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
       const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_charge,
                              subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, shipping_label, custom_fields, source, landing_id,
-                             page_seconds, checkout_seconds)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'landing', ?, ?, ?)`,
+                             page_seconds, checkout_seconds, attribution, utm_source, utm_campaign)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?)`,
         [customer?.id ?? null, values.name, phone, values.address, values.note.slice(0, 1000) || null,
          zone.id, shipping, subtotal, subtotal + shipping, ip, userAgent, fbp, fbc, sourceUrl,
-         zone.label, customFields.length ? JSON.stringify(customFields) : null, landing.id, timing.page, timing.checkout],
+         zone.label, customFields.length ? JSON.stringify(customFields) : null, landing.id, timing.page, timing.checkout, attr.json, attr.source, attr.campaign],
       );
       const orderId = result.insertId;
       const no = `${landing.order_prefix || "DC"}${10000 + orderId}`;
@@ -163,11 +164,12 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   after(() => alertNewOrder(placed.orderId));
   // Server-side Purchase right away when the pixel is set to count orders as soon as they are placed.
   const marketing = await getMarketingConfig();
-  if (marketing.capiEnabled && marketing.purchaseTrigger === "placed") {
+  if (marketing.capiSwitch && marketing.purchaseTrigger === "placed") {
     after(() => sendPurchaseForOrder(placed.orderId));
   }
 
-  redirect(`/order/success?no=${placed.no}`);
+  // &l= tells the thank-you page which landing page (and so which pixels) the order belongs to.
+  redirect(`/order/success?no=${placed.no}&l=${encodeURIComponent(landing.slug)}`);
 }
 
 class OrderError extends Error {}

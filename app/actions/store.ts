@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { queryOne, transaction } from "@/lib/db";
+import { execute, queryOne, transaction } from "@/lib/db";
 import { getCustomer } from "@/lib/auth";
 import { getPaymentConfig, getProductsByIds, getStoreConfig, revalidateStock } from "@/lib/data/catalog";
 import { getSettings } from "@/lib/data/store";
@@ -12,7 +12,7 @@ import { deliveryCharge } from "@/lib/store-config";
 import { isPaymentMethod, isWallet, PAYMENT_LABEL } from "@/lib/payments";
 import { normalizePhone } from "@/lib/phone";
 import { clientIpFrom } from "@/lib/client-ip";
-import { readCheckoutTiming } from "@/lib/checkout";
+import { readCheckoutTiming, readOrderAttribution } from "@/lib/checkout";
 import { isIpBlocked } from "@/lib/ip-block";
 import { logActivity } from "@/lib/activity";
 import { alertNewOrder } from "@/lib/notify";
@@ -112,6 +112,7 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   let placed: { no: string; orderId: number; count: number; total: number };
   try {
     const timing = readCheckoutTiming(formData);
+    const attr = readOrderAttribution(formData);
     placed = await transaction(async (conn) => {
       const ids = items.map((i) => i.id);
       // Prices and stock always come from the database, under a row lock.
@@ -130,14 +131,14 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
       const [res] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_label, shipping_charge, subtotal, total,
            payment_method, payment_status, payment_sender, payment_trx, source,
-           ip_address, user_agent, fbp, fbc, event_source_url, page_seconds, checkout_seconds)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?)`,
+           ip_address, user_agent, fbp, fbc, event_source_url, page_seconds, checkout_seconds, attribution, utm_source, utm_campaign)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [customer?.id ?? null, values.name, phone, values.address, values.note.slice(0, 1000) || null,
          inside ? "inside" : "outside", inside ? "Inside Dhaka" : "Outside Dhaka", shipping, subtotal, subtotal + shipping,
          method, method === "cod" ? "unpaid" : "pending_verification", sender, trx,
          clientIpFrom(h), h.get("user-agent")?.slice(0, 300) ?? null,
          jar.get("_fbp")?.value?.slice(0, 255) ?? null, jar.get("_fbc")?.value?.slice(0, 255) ?? null, h.get("referer")?.slice(0, 500) ?? null,
-         timing.page, timing.checkout],
+         timing.page, timing.checkout, attr.json, attr.source, attr.campaign],
       );
       const orderId = res.insertId;
       const no = `FB${10000 + orderId}`;
@@ -162,13 +163,21 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   }
 
   revalidateStock();
+  // Tie the order to the main-site visit that produced it (Live Visitors: conversion).
+  const vid = String(formData.get("vid") ?? "");
+  if (/^[a-z0-9]{12,24}$/.test(vid)) {
+    await execute(
+      "UPDATE landing_visits SET order_id = ? WHERE sid = ? AND landing_id = 0 AND order_id IS NULL ORDER BY id DESC LIMIT 1",
+      [placed.orderId, vid],
+    ).catch(() => {});
+  }
   await logActivity({
     action: "order.created", module: "orders", entityType: "order", entityId: placed.orderId,
     description: `New store order #${placed.no} from ${values.name} (${phone}) — ${placed.count} item(s), ৳${placed.total}, ${PAYMENT_LABEL[method]}, ${inside ? "Inside" : "Outside"} Dhaka`,
   });
   after(() => alertNewOrder(placed.orderId));
   const marketing = await getMarketingConfig();
-  if (marketing.capiEnabled && marketing.purchaseTrigger === "placed") after(() => sendPurchaseForOrder(placed.orderId));
+  if (marketing.capiSwitch && marketing.purchaseTrigger === "placed") after(() => sendPurchaseForOrder(placed.orderId));
 
   redirect(`/checkout/success?no=${placed.no}`);
 }

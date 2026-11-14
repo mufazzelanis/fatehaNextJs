@@ -12,15 +12,17 @@ export const LANDING_TAG = "landings";
 type Row = {
   id: number; slug: string; name: string; status: LandingStatus; product_id: number | null; content: string | null; checkout: string | null;
   banner_image: string | null; seo_title: string | null; seo_description: string | null; order_prefix: string; footer_name: string | null;
-  invoice_name: string | null; views: number; created_at: Date; updated_at: Date;
+  invoice_name: string | null; views: number; created_at: Date; updated_at: Date; pixel_mode?: string | null; pixels?: string | null;
 };
 
-export type Landing = Omit<Row, "content" | "checkout"> & { content: LandingContent; checkout: CheckoutConfig };
+export type Landing = Omit<Row, "content" | "checkout" | "pixels"> & { content: LandingContent; checkout: CheckoutConfig };
 
 const parse = (s: string | null) => {
   try { return s ? JSON.parse(s) : {}; } catch { return {}; }
 };
-const toLanding = (r: Row): Landing => ({ ...r, views: Number(r.views), content: normalizeContent(parse(r.content)), checkout: normalizeCheckout(parse(r.checkout)) });
+// `pixels` holds Conversions API tokens — never part of a Landing object (it can reach client components).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const toLanding = ({ pixels: _secret, ...r }: Row): Landing => ({ ...r, views: Number(r.views), content: normalizeContent(parse(r.content)), checkout: normalizeCheckout(parse(r.checkout)) });
 
 /** Any status — the page decides whether it may be shown. Cached per slug. */
 export async function getLandingBySlug(slug: string): Promise<Landing | null> {

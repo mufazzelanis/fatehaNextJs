@@ -32,6 +32,9 @@ export type Order = {
   user_agent: string | null;
   page_seconds: number | null;
   checkout_seconds: number | null;
+  attribution: string | null;
+  utm_source: string | null;
+  utm_campaign: string | null;
   fbp: string | null;
   fbc: string | null;
   event_source_url: string | null;
@@ -76,6 +79,8 @@ export type OrderFilters = {
   landing?: number;
   /** Time of day the order was placed (Bangladesh time): "00-06" | "06-12" | "12-18" | "18-24" */
   time?: string;
+  /** utm_campaign of the order (from the visit that led to it). */
+  campaign?: string;
 };
 
 /** Six-hour slots of the day for the orders "time of day" filter. */
@@ -123,6 +128,10 @@ function buildWhere(filters: OrderFilters) {
     where.push("o.payment_method = ?");
     params.push(filters.method);
   }
+  if (filters.campaign?.trim()) {
+    where.push("o.utm_campaign = ?");
+    params.push(filters.campaign.trim().slice(0, 200));
+  }
   const slot = timeSlot(filters.time);
   if (slot) {
     // created_at is stored in Bangladesh time (see lib/db.ts), so HOUR() is the local hour.
@@ -169,6 +178,18 @@ export async function timeSlotCounts(filters: OrderFilters) {
   const counts: Record<string, number> = {};
   for (const t of TIME_SLOTS) counts[t.id] = Number(rows.find((r) => Number(r.slot) === t.from / 6)?.count ?? 0);
   return counts;
+}
+
+/** Campaigns that brought orders in the last 90 days, busiest first (orders filter + report). */
+export async function campaignStats() {
+  const rows = await query<{ campaign: string; source: string | null; orders: number; revenue: number; delivered: number; cancelled: number }>(
+    `SELECT utm_campaign AS campaign, MAX(utm_source) AS source, COUNT(*) AS orders,
+            SUM(CASE WHEN status NOT IN ('cancelled','returned') THEN total ELSE 0 END) AS revenue,
+            SUM(status = 'delivered') AS delivered, SUM(status IN ('cancelled','returned')) AS cancelled
+     FROM orders WHERE utm_campaign IS NOT NULL AND created_at >= NOW() - INTERVAL 90 DAY
+     GROUP BY utm_campaign ORDER BY orders DESC LIMIT 100`,
+  );
+  return rows.map((r) => ({ ...r, orders: Number(r.orders), revenue: Number(r.revenue), delivered: Number(r.delivered), cancelled: Number(r.cancelled) }));
 }
 
 export async function statusCounts() {

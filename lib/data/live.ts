@@ -1,14 +1,17 @@
 import "server-only";
 import { query, queryOne } from "@/lib/db";
 import {
-  LIVE_DEVICES, LIVE_SECTIONS, LIVE_SOURCES, LIVE_WINDOW_SECONDS,
+  LIVE_DEVICES, LIVE_SECTIONS, LIVE_SOURCES, LIVE_WINDOW_SECONDS, MAIN_SITE_ID, MAIN_SITE_LABEL,
   type LiveDevice, type LiveEvent, type LiveSection, type LiveSource, type LiveStats, type LiveVisitor,
 } from "@/lib/live";
 
 type VisitRow = {
   id: number; landing_id: number; ip: string | null; user_agent: string | null; section: LiveSection; source: LiveSource; device: LiveDevice;
-  reached_form: number; clicks: number; order_id: number | null; started_at: Date; last_seen: Date; left_at: Date | null;
+  reached_form: number; clicks: number; order_id: number | null; started_at: Date; last_seen: Date; left_at: Date | null; page: string | null;
 };
+
+/** Traffic filter value for "main website only" (landing_id 0); 0 means every page. */
+export const MAIN_SITE_FILTER = -1;
 
 const zero = <K extends string>(keys: readonly K[]) => Object.fromEntries(keys.map((k) => [k, 0])) as Record<K, number>;
 
@@ -18,7 +21,7 @@ export async function getLiveStats(): Promise<LiveStats> {
     queryOne<{ now: Date }>("SELECT NOW() AS now"),
     // Visits touching the last 30 minutes (here-now list, minute chart, arrive/leave feed).
     query<VisitRow>(
-      `SELECT id, landing_id, ip, user_agent, section, source, device, reached_form, clicks, order_id, started_at, last_seen, left_at
+      `SELECT id, landing_id, ip, user_agent, section, source, device, reached_form, clicks, order_id, started_at, last_seen, left_at, page
        FROM landing_visits WHERE last_seen >= NOW() - INTERVAL 31 MINUTE ORDER BY last_seen DESC LIMIT 5000`,
     ),
     query<{ id: number; name: string; slug: string }>("SELECT id, name, slug FROM landing_pages"),
@@ -30,6 +33,9 @@ export async function getLiveStats(): Promise<LiveStats> {
   const endOf = (r: VisitRow) => (r.left_at ? r.left_at.getTime() : r.last_seen.getTime() + windowMs);
   const isHere = (r: VisitRow) => !r.left_at && now - r.last_seen.getTime() <= windowMs;
   const byId = new Map(landings.map((l) => [l.id, l]));
+  byId.set(MAIN_SITE_ID, { id: MAIN_SITE_ID, name: MAIN_SITE_LABEL, slug: "" });
+  // Where the visitor is: the landing slug, or for the main website the page path ("products/x", "" = home).
+  const placeOf = (r: VisitRow) => (r.landing_id === MAIN_SITE_ID ? (r.page ?? "/").slice(1) : byId.get(r.landing_id)?.slug ?? "?");
 
   const here = rows.filter(isHere);
   const sections = zero(LIVE_SECTIONS);
@@ -59,7 +65,7 @@ export async function getLiveStats(): Promise<LiveStats> {
     .slice(0, 100)
     .map((r) => ({
       id: r.id, ip: r.ip, ipVisits: r.ip ? ipVisits.get(r.ip) ?? 1 : 1, userAgent: r.user_agent, source: r.source, device: r.device,
-      landing: byId.get(r.landing_id)?.slug ?? "?", section: r.section, reachedForm: !!r.reached_form, clicks: r.clicks,
+      landing: placeOf(r), section: r.section, reachedForm: !!r.reached_form, clicks: r.clicks,
       startedAt: r.started_at.toISOString(), ordered: !!r.order_id,
     }));
 
@@ -75,7 +81,7 @@ export async function getLiveStats(): Promise<LiveStats> {
   let arrived5 = 0;
   let left5 = 0;
   for (const r of rows) {
-    const base = { landing: byId.get(r.landing_id)?.slug ?? "?", source: r.source, device: r.device, ip: r.ip };
+    const base = { landing: placeOf(r), source: r.source, device: r.device, ip: r.ip };
     if (r.started_at.getTime() >= now - 30 * 60_000) {
       feed.push({ kind: "arrived", at: r.started_at.toISOString(), ...base });
       if (r.started_at.getTime() >= fiveMin) arrived5++;
@@ -114,7 +120,7 @@ function where(f: TrafficFilter, col: string, alias: string) {
     w.push(f.hourFrom <= f.hourTo ? `HOUR(${alias}.${col}) BETWEEN ? AND ?` : `(HOUR(${alias}.${col}) >= ? OR HOUR(${alias}.${col}) <= ?)`);
     p.push(f.hourFrom, f.hourTo);
   }
-  if (f.landing) { w.push(`${alias}.landing_id = ?`); p.push(f.landing); }
+  if (f.landing) { w.push(`${alias}.landing_id = ?`); p.push(f.landing === MAIN_SITE_FILTER ? MAIN_SITE_ID : f.landing); }
   return { sql: w.join(" AND "), params: p };
 }
 
@@ -139,8 +145,10 @@ export async function getTrafficReport(f: TrafficFilter): Promise<TrafficReport>
     query<{ h: number; n: number }>(`SELECT HOUR(v.started_at) h, COUNT(*) n FROM landing_visits v WHERE ${v.sql} GROUP BY h`, v.params),
     query<{ h: number; n: number }>(`SELECT HOUR(c.created_at) h, COUNT(*) n FROM landing_clicks c WHERE ${c.sql} AND c.kind IN ('order','sticky','submit') GROUP BY h`, c.params),
     query<{ id: number; name: string; slug: string; visits: number; clicks: number; orders: number }>(
-      `SELECT l.id, l.name, l.slug, COUNT(*) visits, SUM(v.clicks) clicks, SUM(v.order_id IS NOT NULL) orders
-       FROM landing_visits v JOIN landing_pages l ON l.id = v.landing_id WHERE ${v.sql} GROUP BY l.id ORDER BY visits DESC`, v.params),
+      `SELECT IF(v.landing_id = 0, ?, v.landing_id) id, COALESCE(MAX(l.name), ?) name, COALESCE(MAX(l.slug), '') slug,
+              COUNT(*) visits, SUM(v.clicks) clicks, SUM(v.order_id IS NOT NULL) orders
+       FROM landing_visits v LEFT JOIN landing_pages l ON l.id = v.landing_id
+       WHERE ${v.sql} AND (v.landing_id = 0 OR l.id IS NOT NULL) GROUP BY v.landing_id ORDER BY visits DESC`, [MAIN_SITE_FILTER, MAIN_SITE_LABEL, ...v.params]),
     query<{ k: LiveSource; n: number }>(`SELECT v.source k, COUNT(*) n FROM landing_visits v WHERE ${v.sql} GROUP BY k`, v.params),
     query<{ k: LiveDevice; n: number }>(`SELECT v.device k, COUNT(*) n FROM landing_visits v WHERE ${v.sql} GROUP BY k`, v.params),
     queryOne<{ n: number }>(`SELECT COUNT(*) n FROM landing_clicks c WHERE ${c.sql} AND c.kind IN ('order','sticky','submit')`, c.params),
@@ -171,7 +179,7 @@ export async function getClickHistory(f: TrafficFilter, page: number, perPage = 
   const c = where(f, "created_at", "c");
   const [rows, total] = await Promise.all([
     query<ClickRow>(
-      `SELECT c.id, c.created_at, c.label, c.kind, c.seconds, l.slug landing, v.ip, v.user_agent, v.source, o.order_no,
+      `SELECT c.id, c.created_at, c.label, c.kind, c.seconds, IF(c.landing_id = 0, SUBSTRING(COALESCE(v.page, '/'), 2), l.slug) landing, v.ip, v.user_agent, v.source, o.order_no,
               (SELECT COUNT(*) FROM landing_visits x WHERE x.ip = v.ip AND x.started_at >= NOW() - INTERVAL 30 DAY) ip_visits
        FROM landing_clicks c
        LEFT JOIN landing_visits v ON v.id = c.visit_id

@@ -8,6 +8,8 @@ export type PurchaseTrigger = "placed" | "confirmed" | "delivered";
 /** What the browser is allowed to know — no tokens. */
 export type PublicPixelConfig = {
   pixelIds: string[];
+  /** Landing slug → the pixel IDs that page uses instead of the main site ones. */
+  scopes: Record<string, string[]>;
   browser: boolean;
   capi: boolean;
   serverPageView: boolean;

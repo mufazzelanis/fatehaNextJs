@@ -17,7 +17,7 @@ export function visitorId() {
   }
 }
 
-function trafficSource(): LiveSource {
+export function trafficSource(): LiveSource {
   const q = new URLSearchParams(location.search);
   const utm = (q.get("utm_source") ?? "").toLowerCase();
   if (q.has("fbclid") || /^(fb|facebook|ig|instagram|meta)/.test(utm)) return "facebook";
@@ -30,7 +30,7 @@ function trafficSource(): LiveSource {
   return "direct";
 }
 
-function deviceType(): LiveDevice {
+export function deviceType(): LiveDevice {
   if (!matchMedia("(pointer: coarse)").matches) return "desktop";
   return Math.min(screen.width, screen.height) >= 700 ? "tablet" : "phone";
 }
@@ -51,7 +51,7 @@ export function useLiveHeartbeat(landingId: number, enabled: boolean) {
     let section: LiveSection = "top";
 
     const send = (leave = false, click?: { label: string; kind: string }) => {
-      const body = JSON.stringify(leave ? { id: landingId, sid, leave: 1 } : { id: landingId, sid, s: section, src, dev, ...(click ? { click: click.label, kind: click.kind } : {}) });
+      const body = JSON.stringify(leave ? { id: landingId, sid, leave: 1 } : { id: landingId, sid, s: section, p: location.pathname, src, dev, ...(click ? { click: click.label, kind: click.kind } : {}) });
       // sendBeacon survives the page closing; text/plain avoids a CORS preflight.
       if (!navigator.sendBeacon?.("/api/live", new Blob([body], { type: "text/plain" }))) {
         fetch("/api/live", { method: "POST", body, keepalive: true }).catch(() => {});

@@ -13,6 +13,8 @@ import { CopyUrl } from "../landing-forms";
 import { ContentEditor } from "./content-editor";
 import { CheckoutEditor } from "./checkout-editor";
 import { LandingSetupForm } from "./setup-form";
+import { LandingPixelForm, type LandingPixelRow } from "./pixel-form";
+import { getMarketingConfig, MAX_PIXELS, parsePixelList, type PixelMode } from "@/lib/meta/config";
 
 export const metadata = { title: "Edit landing page" };
 
@@ -20,6 +22,7 @@ const TABS = [
   { key: "setup", label: "Setup & URL" },
   { key: "content", label: "Page content" },
   { key: "checkout", label: "Checkout form" },
+  { key: "pixel", label: "Pixel & CAPI" },
 ] as const;
 
 export default function LandingEditorPage(props: PageProps<"/admin/landings/[id]">) {
@@ -38,7 +41,9 @@ async function LandingEditor({ params, searchParams }: PageProps<"/admin/landing
   if (!l) notFound();
   const sp = await searchParams;
   const canCheckout = can(admin, "checkout.manage");
-  const tab = TABS.some((t) => t.key === sp.tab) && (sp.tab !== "checkout" || canCheckout) ? (sp.tab as (typeof TABS)[number]["key"]) : "setup";
+  const canPixel = can(admin, "marketing.manage");
+  const allowed = (k: string) => (k !== "checkout" || canCheckout) && (k !== "pixel" || canPixel);
+  const tab = TABS.some((t) => t.key === sp.tab) && allowed(String(sp.tab)) ? (sp.tab as (typeof TABS)[number]["key"]) : "setup";
   const [product, products, stats, settings] = await Promise.all([
     l.product_id ? queryOne<Product>("SELECT * FROM products WHERE id = ?", [l.product_id]) : null,
     query<{ id: number; name: string; price: number; stock: number; is_active: number }>("SELECT id, name, price, stock, is_active FROM products ORDER BY is_active DESC, name"),
@@ -67,7 +72,7 @@ async function LandingEditor({ params, searchParams }: PageProps<"/admin/landing
 
       <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex w-max gap-1 rounded-xl bg-white p-1 shadow-xs ring-1 ring-slate-200/80">
-          {TABS.filter((t) => t.key !== "checkout" || canCheckout).map((t) => (
+          {TABS.filter((t) => allowed(t.key)).map((t) => (
             <Link key={t.key} href={`/admin/landings/${l.id}${t.key === "setup" ? "" : `?tab=${t.key}`}`} scroll={false}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${tab === t.key ? "bg-brand-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}>{t.label}</Link>
           ))}
@@ -82,6 +87,7 @@ async function LandingEditor({ params, searchParams }: PageProps<"/admin/landing
           }} />
       )}
       {tab === "content" && <ContentEditor initial={l.content} landingId={l.id} />}
+      {tab === "pixel" && <PixelTab landingId={l.id} mode={l.pixel_mode} />}
       {tab === "checkout" && (
         <CheckoutEditor initial={l.checkout} landingId={l.id}
           product={{
@@ -91,4 +97,17 @@ async function LandingEditor({ params, searchParams }: PageProps<"/admin/landing
       )}
     </>
   );
+}
+
+/** Pixel settings: ids, labels and whether a token is saved — the tokens themselves never leave the server. */
+async function PixelTab({ landingId, mode }: { landingId: number; mode: string | null | undefined }) {
+  const [row, config] = await Promise.all([
+    queryOne<{ pixels: string | null }>("SELECT pixels FROM landing_pages WHERE id = ?", [landingId]),
+    getMarketingConfig(),
+  ]);
+  const pixels: LandingPixelRow[] = parsePixelList(row?.pixels).map((p) => ({
+    id: p.id, label: p.label, hasToken: !!p.token, tokenHint: p.token ? "••••" + p.token.slice(-4) : "",
+  }));
+  const m: PixelMode = mode === "own" || mode === "both" ? mode : "main";
+  return <LandingPixelForm landingId={landingId} mode={m} pixels={pixels} mainPixels={config.pixels.map((p) => p.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />;
 }

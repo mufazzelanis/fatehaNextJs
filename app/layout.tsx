@@ -14,6 +14,8 @@ import "@fontsource-variable/geist/wght.css";
 import { Suspense } from "react";
 import { getPublicPixelConfig } from "@/lib/meta/config";
 import { MetaPixel } from "@/components/meta/meta-pixel";
+import { AttributionTracker } from "@/components/attribution-tracker";
+import { SiteLiveTracker } from "@/components/site-live-tracker";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,9 +38,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="bn" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <Suspense><AttributionTracker /></Suspense>
+        <Suspense><SiteLiveTracker /></Suspense>
         {pixel && (
           <Suspense>
-            <MetaPixel config={{ pixelIds: pixel.pixelIds, browser: pixel.browser, capi: pixel.capi, serverPageView: pixel.serverPageView, events: pixel.events }} />
+            <MetaPixel config={{ pixelIds: pixel.pixelIds, scopes: pixel.scopes, browser: pixel.browser, capi: pixel.capi, serverPageView: pixel.serverPageView, events: pixel.events }} />
           </Suspense>
         )}
         {pixel?.browser && (

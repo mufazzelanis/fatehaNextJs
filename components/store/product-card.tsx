@@ -43,12 +43,12 @@ export function CardActions({ product: p, onOrder }: { product: CardProduct; onO
     return <button type="button" disabled className={`h-10 w-full text-sm font-semibold ${cartBtn} ${press}`}>Out of stock</button>;
   }
   const cartFull = (
-    <button type="button" onClick={() => quickAdd(p)} className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 px-2 text-[13px] font-semibold sm:text-sm ${cartBtn} ${press}`}>
+    <button type="button" data-track="order" onClick={() => quickAdd(p)} className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 px-2 text-[13px] font-semibold sm:text-sm ${cartBtn} ${press}`}>
       <BagIcon className="size-4 shrink-0" /> <span className="truncate">{b.cart.label}</span>
     </button>
   );
   const orderFull = (
-    <button type="button" onClick={order} className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center px-2 text-[13px] font-bold sm:text-sm ${orderBtn} ${press}`}>
+    <button type="button" data-track="order" onClick={order} className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center px-2 text-[13px] font-bold sm:text-sm ${orderBtn} ${press}`}>
       <span className="truncate">{b.order.label}</span>
     </button>
   );
@@ -58,7 +58,7 @@ export function CardActions({ product: p, onOrder }: { product: CardProduct; onO
   if (b.layout === "both") return <div className="flex flex-col gap-1.5">{cartFull}{orderFull}</div>;
   return (
     <div className="flex gap-1.5">
-      <button type="button" onClick={() => quickAdd(p)} aria-label={b.cart.label} title={b.cart.label}
+      <button type="button" data-track="order" onClick={() => quickAdd(p)} aria-label={b.cart.label} title={b.cart.label}
         className={`grid size-10 shrink-0 place-items-center ${cartBtn} ${press}`}>
         <BagIcon className="size-[18px]" />
       </button>

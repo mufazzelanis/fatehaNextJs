@@ -18,6 +18,7 @@ const openVisit = (sid: string, landing: number) =>
  * - heartbeat every ~15s (and when the visitor moves to another part of the page)
  * - { click } when an order / checkout button is pressed
  * - { leave } when the page is hidden or closed
+ * id 0 = the main site (shop, product, cart, checkout, guide pages) — one visit across its pages.
  * Only published landing pages count; bots are ignored.
  */
 export async function POST(request: Request) {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   }
   const id = Number(body.id);
   const sid = String(body.sid ?? "");
-  if (!Number.isInteger(id) || id <= 0 || !/^[a-z0-9]{12,24}$/.test(sid)) return done;
+  if (!Number.isInteger(id) || id < 0 || !/^[a-z0-9]{12,24}$/.test(sid)) return done;
   const ua = request.headers.get("user-agent") ?? "";
   if (/bot|crawler|spider|facebookexternalhit|preview|lighthouse/i.test(ua)) return done;
 
@@ -44,19 +45,23 @@ export async function POST(request: Request) {
   }
 
   const section = pick(LIVE_SECTIONS, body.s, "top");
+  // Path only (no query string), e.g. "/products/dentocare" — shown on the Live Visitors page.
+  const page = typeof body.p === "string" && /^\/[\w\-/.%]{0,159}$/.test(body.p) ? body.p : null;
   let visit = await openVisit(sid, id);
   if (visit) {
     await execute(
-      `UPDATE landing_visits SET last_seen = NOW(), left_at = NULL, section = ?, reached_form = reached_form OR ? WHERE id = ?`,
-      [section, section === "form" ? 1 : 0, visit.id],
+      `UPDATE landing_visits SET last_seen = NOW(), left_at = NULL, section = ?, page = COALESCE(?, page), reached_form = reached_form OR ? WHERE id = ?`,
+      [section, page, section === "form" ? 1 : 0, visit.id],
     );
   } else {
-    const res = await execute(
-      `INSERT INTO landing_visits (sid, landing_id, ip, user_agent, source, device, section, reached_form)
-       SELECT ?, id, ?, ?, ?, ?, ?, ? FROM landing_pages WHERE id = ? AND status = 'published'`,
-      [sid, clientIpFrom(request.headers), ua.slice(0, 300) || null, pick(LIVE_SOURCES, body.src, "direct"),
-       pick(LIVE_DEVICES, body.dev, "phone"), section, section === "form" ? 1 : 0, id],
-    );
+    const values = [sid, clientIpFrom(request.headers), ua.slice(0, 300) || null, pick(LIVE_SOURCES, body.src, "direct"),
+      pick(LIVE_DEVICES, body.dev, "phone"), section, section === "form" ? 1 : 0, page];
+    const res = id === 0
+      ? await execute(
+          `INSERT INTO landing_visits (sid, landing_id, ip, user_agent, source, device, section, reached_form, page) VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?)`, values)
+      : await execute(
+          `INSERT INTO landing_visits (sid, landing_id, ip, user_agent, source, device, section, reached_form, page)
+           SELECT ?, id, ?, ?, ?, ?, ?, ?, ? FROM landing_pages WHERE id = ? AND status = 'published'`, [...values, id]);
     if (!res.affectedRows) return done; // not a published landing page
     visit = { id: res.insertId, started_at: new Date() };
   }

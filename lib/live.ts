@@ -50,3 +50,29 @@ export function duration(sec: number) {
   if (m < 60) return `${m}m ${String(sec % 60).padStart(2, "0")}s`;
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
+
+// ───────────── main site (landing_id 0)
+
+/** landing_visits.landing_id for visits to the main website (shop, products, cart, checkout, guide pages). */
+export const MAIN_SITE_ID = 0;
+export const MAIN_SITE_LABEL = "Main website";
+
+/** First path segments that belong to the main website. Anything else with one segment is a landing page. */
+const MAIN_SITE_ROOTS = new Set([
+  "", "cart", "categories", "checkout", "contact", "faq", "products", "shop", "wishlist", "track",
+  "how-to-use", "ingredients", "dental-care", "privacy-policy", "refund-policy", "terms-of-service", "order",
+]);
+
+/** Is this a public main-website page (tracked as landing 0)? The landing thank-you page (?l=slug) belongs to its landing. */
+export function isMainSitePath(pathname: string, search: string) {
+  const root = pathname.split("/")[1] ?? "";
+  if (!MAIN_SITE_ROOTS.has(root)) return false;
+  if (root === "order") return !new URLSearchParams(search).get("l");
+  return true;
+}
+
+/** Where on the main site: home = "top", checkout = "form" (about to order), everything else = "content". */
+export function mainSiteSection(pathname: string): LiveSection {
+  if (pathname === "/") return "top";
+  return pathname.startsWith("/checkout") && !pathname.startsWith("/checkout/success") ? "form" : "content";
+}

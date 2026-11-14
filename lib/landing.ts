@@ -13,6 +13,7 @@ export const RESERVED_SLUGS = new Set([
   "admin", "api", "account", "business", "media", "order", "track", "track-order", "shop", "products", "product", "cart", "checkout",
   "wishlist", "categories", "category", "contact", "faq", "login", "register", "logout", "privacy-policy", "refund-policy",
   "terms-of-service", "pages", "search", "_next", "favicon.ico", "robots.txt", "sitemap.xml", "brand", "static", "assets", "invoice",
+  "how-to-use", "ingredients", "dental-care",
 ]);
 
 export function slugifyLanding(s: string) {

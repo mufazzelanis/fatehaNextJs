@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { cacheLife } from "next/cache";
 import { query } from "@/lib/db";
+import { getGuideContent } from "@/lib/data/guides";
+import { DEFAULT_GUIDES, enabledGuides } from "@/lib/guides";
 
 const SITE = (process.env.SITE_URL || "https://fatehabd.com").replace(/\/$/, "");
 
@@ -8,6 +10,7 @@ const SITE = (process.env.SITE_URL || "https://fatehabd.com").replace(/\/$/, "")
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   "use cache";
   cacheLife("hours");
+  const guides = await getGuideContent().catch(() => DEFAULT_GUIDES);
   const [products, categories, landings] = await Promise.all([
     query<{ slug: string; updated_at: Date }>("SELECT slug, updated_at FROM products WHERE is_active = 1 AND in_store = 1"),
     query<{ slug: string; updated_at: Date }>("SELECT slug, updated_at FROM categories WHERE is_active = 1"),
@@ -20,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...categories.map((c) => ({ url: `${SITE}/shop/category/${c.slug}`, lastModified: c.updated_at, changeFrequency: "weekly" as const, priority: 0.8 })),
     ...products.map((p) => ({ url: `${SITE}/products/${p.slug}`, lastModified: p.updated_at, changeFrequency: "weekly" as const, priority: 0.7 })),
     ...landings.map((l) => ({ url: `${SITE}/${l.slug}`, lastModified: l.updated_at, changeFrequency: "weekly" as const, priority: 0.8 })),
-    ...["how-to-use", "ingredients", "dental-care"].map((p) => ({ url: `${SITE}/${p}`, changeFrequency: "monthly" as const, priority: 0.6 })),
+    ...enabledGuides(guides).map((g) => ({ url: `${SITE}${g.href}`, changeFrequency: "monthly" as const, priority: 0.6 })),
     ...["faq", "contact", "refund-policy", "privacy-policy", "terms-of-service"].map((p) => ({ url: `${SITE}/${p}`, changeFrequency: "monthly" as const, priority: 0.3 })),
   ];
 }

@@ -11,7 +11,8 @@ import { PurchaseEvent } from "@/components/meta/meta-pixel";
 import { getMarketingConfig } from "@/lib/meta/config";
 import { purchaseEventId } from "@/lib/meta/capi";
 import Link from "next/link";
-import { GUIDES } from "@/lib/guides";
+import { enabledGuides } from "@/lib/guides";
+import { getGuideContent } from "@/lib/data/guides";
 
 export const metadata: Metadata = { title: "অর্ডার সফল হয়েছে", robots: { index: false } };
 
@@ -43,7 +44,8 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
     month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dhaka",
   });
   const zone = zoneLabel(order);
-  const pixel = await getMarketingConfig();
+  const [pixel, guide] = await Promise.all([getMarketingConfig(), getGuideContent()]);
+  const GUIDES = guide.showOnThankYou ? enabledGuides(guide) : [];
   // Browser Purchase pairs with the server Purchase (same event ID) only when purchases are counted at checkout.
   const firePurchase = fresh && pixel.browserEnabled && pixel.events.Purchase && pixel.purchaseTrigger === "placed";
 
@@ -136,7 +138,7 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
           </section>
 
           {/* While the parcel is on its way: how to use it, what is inside, and daily dental care. */}
-          <section className="mt-6 rounded-2xl bg-linear-to-br from-[#e8f6ee] to-[#f3faf6] p-4 ring-1 ring-[#1d6b4a]/15 sm:p-5">
+          {GUIDES.length > 0 && <section className="mt-6 rounded-2xl bg-linear-to-br from-[#e8f6ee] to-[#f3faf6] p-4 ring-1 ring-[#1d6b4a]/15 sm:p-5">
             <p className="font-display text-[19px] font-bold text-[#1d6b4a]">পণ্য হাতে পাওয়ার আগেই জেনে নিন</p>
             <div className="mt-3 grid gap-2.5">
               {GUIDES.map((g) => (
@@ -150,7 +152,7 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
                 </Link>
               ))}
             </div>
-          </section>
+          </section>}
         </div>
       </main>
       <LandingFooter narrow name={landing?.footer_name || ls.footerName} />

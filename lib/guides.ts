@@ -1,11 +1,12 @@
-// Content of the product guide pages (/how-to-use, /ingredients, /dental-care) — from FatehaBD's documents.
+// Product guide pages (/how-to-use, /ingredients, /dental-care): content model, defaults (from FatehaBD's
+// documents) and validation. Client-safe — the admin editor uses it too. Saved in settings.guide_content.
 
-export const GUIDE_PRODUCT = "মাশরুম ডেন্টোকেয়ার প্লাস";
-export const GUIDE_PHONES = ["01635517977", "01838466823"];
+const GUIDE_PRODUCT = "মাশরুম ডেন্টোকেয়ার প্লাস";
+const GUIDE_PHONES = ["01635517977", "01838466823"];
 /** "01635517977" → "0163 55 17 977" (as printed on the product material). */
 export const prettyPhone = (p: string) => `${p.slice(0, 4)} ${p.slice(4, 6)} ${p.slice(6, 8)} ${p.slice(8)}`;
 
-export const GUIDES = [
+const GUIDE_LIST = [
   { href: "/how-to-use", label: "ব্যবহারবিধি", short: "ব্যবহারবিধি", icon: "🪥", text: "সকাল, রাত ও বিশেষ ব্যবহারের সঠিক নিয়ম" },
   { href: "/ingredients", label: "উপাদান পরিচিতি", short: "উপাদান", icon: "🌿", text: "১৪টি প্রাকৃতিক উপাদানের পরিচয় ও বৈশিষ্ট্য" },
   { href: "/dental-care", label: "দাঁতের যত্ন গাইড", short: "যত্ন গাইড", icon: "🦷", text: "সুস্থ দাঁত ও মাড়ির জন্য ২৬টি জরুরি পরামর্শ" },
@@ -13,7 +14,7 @@ export const GUIDES = [
 
 // ───────────── ব্যবহারবিধি
 
-export const USAGE = {
+const USAGE = {
   title: "সঠিক ব্যবহারের নিয়ম জেনে নিন",
   intro: "আপনার প্রতিদিনের Oral Care Routine-এর জন্য ব্যবহারবিধি ও প্রয়োজনীয় নির্দেশনা।",
   steps: [
@@ -47,11 +48,11 @@ export const USAGE = {
 // ───────────── উপাদান পরিচিতি
 
 export type Ingredient = {
-  no: string; bn: string; en: string; sciLabel?: string; sci?: string; icon: string;
+  bn: string; en: string; sciLabel?: string; sci?: string; icon: string;
   intro: string; points: string[]; footnote?: string; note?: { kind: "warning" | "info"; text: string };
 };
 
-export const INGREDIENTS_INTRO = {
+const INGREDIENTS_INTRO = {
   title: "প্রকৃতির বিভিন্ন উপাদানের পরিচয় জানুন",
   subtitle: "Know Your Ingredients | Fateha BD",
   text: [
@@ -66,7 +67,7 @@ export const INGREDIENTS_INTRO = {
   signature: "আপনার সচেতনতা আমাদের কাছে গুরুত্বপূর্ণ।",
 };
 
-export const INGREDIENTS: Ingredient[] = [
+const INGREDIENTS: (Ingredient & { no: string })[] = [
   {
     no: "০১", bn: "মাশরুম", en: "Shiitake Mushroom", sciLabel: "বৈজ্ঞানিক নাম", sci: "Lentinula edodes", icon: "🍄",
     intro: "Shiitake একটি পরিচিত ভোজ্য মাশরুম। এটি পূর্ব এশিয়ার খাদ্যসংস্কৃতিতে দীর্ঘদিন ধরে ব্যবহৃত হয়ে আসছে।",
@@ -149,17 +150,17 @@ export const INGREDIENTS: Ingredient[] = [
 
 // ───────────── দাঁতের যত্ন গাইড
 
-export type CareTip = { n: number; title: string; icon: string; points: string[]; steps?: boolean };
+export type CareTip = { title: string; icon: string; points: string[]; steps?: boolean };
 export type CareGroup = { id: string; title: string; icon: string; tips: CareTip[] };
 
-export const CARE_INTRO = {
+const CARE_INTRO = {
   title: "সুস্থ দাঁত ও মাড়ির জন্য দাঁতের যত্ন গাইড",
   text: "প্রতিদিনের ছোট ছোট সঠিক অভ্যাসই দাঁত ও মাড়িকে সুস্থ রাখে। নিচের ২৬টি পরামর্শ নিজে মেনে চলুন, পরিবারের সবাইকেও জানান।",
 };
 
-const tip = (n: number, icon: string, title: string, points: string[], steps = false): CareTip => ({ n, icon, title, points, steps });
+const tip = (n: number, icon: string, title: string, points: string[], steps = false) => ({ n, icon, title, points, steps });
 
-export const CARE_GROUPS: CareGroup[] = [
+const CARE_GROUPS: { id: string; title: string; icon: string; tips: (CareTip & { n: number })[] }[] = [
   {
     id: "brushing", title: "ব্রাশ ও টুথব্রাশ", icon: "🪥",
     tips: [
@@ -309,3 +310,142 @@ export const CARE_GROUPS: CareGroup[] = [
 
 /** Bangla digits for the tip numbers (১, ২, …). */
 export const bnNum = (n: number) => String(n).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]);
+
+// ───────────── editable content (admin → Guide Pages)
+
+export const GUIDE_KEYS = ["usage", "ingredients", "care"] as const;
+export type GuideKey = (typeof GUIDE_KEYS)[number];
+export const GUIDE_HREF: Record<GuideKey, "/how-to-use" | "/ingredients" | "/dental-care"> = {
+  usage: "/how-to-use", ingredients: "/ingredients", care: "/dental-care",
+};
+export type StepTone = "amber" | "indigo" | "emerald";
+export type GuidePageMeta = { enabled: boolean; label: string; short: string; icon: string; text: string };
+export type UsageStep = { step: string; title: string; icon: string; tone: StepTone; points: string[]; text: string };
+export type IngredientItem = {
+  bn: string; en: string; sciLabel: string; sci: string; icon: string; intro: string; points: string[]; footnote: string;
+  noteKind: "" | "warning" | "info"; note: string;
+};
+export type CareTipItem = { title: string; icon: string; points: string[]; steps: boolean };
+export type CareGroupItem = { title: string; icon: string; tips: CareTipItem[] };
+
+export type GuideContent = {
+  product: string;
+  phones: string[];
+  showOnThankYou: boolean;
+  pages: Record<GuideKey, GuidePageMeta>;
+  usage: { title: string; intro: string; steps: UsageStep[]; notesTitle: string; notes: string[] };
+  ingredients: { title: string; subtitle: string; text: string[]; items: IngredientItem[]; closingTitle: string; closing: string[]; signature: string };
+  care: { title: string; text: string; groups: CareGroupItem[] };
+};
+
+const metaFor = (href: string): GuidePageMeta => {
+  const g = GUIDE_LIST.find((x) => x.href === href)!;
+  return { enabled: true, label: g.label, short: g.short, icon: g.icon, text: g.text };
+};
+
+export const DEFAULT_GUIDES: GuideContent = {
+  product: GUIDE_PRODUCT,
+  phones: [...GUIDE_PHONES],
+  showOnThankYou: true,
+  pages: { usage: metaFor("/how-to-use"), ingredients: metaFor("/ingredients"), care: metaFor("/dental-care") },
+  usage: {
+    title: USAGE.title, intro: USAGE.intro, notesTitle: USAGE.notesTitle, notes: [...USAGE.notes],
+    steps: USAGE.steps.map((s) => ({
+      step: s.step, title: s.title, icon: s.icon, tone: s.tone,
+      points: "points" in s ? [...s.points] : [], text: "text" in s ? s.text : "",
+    })),
+  },
+  ingredients: {
+    title: INGREDIENTS_INTRO.title, subtitle: INGREDIENTS_INTRO.subtitle, text: [...INGREDIENTS_INTRO.text],
+    closingTitle: INGREDIENTS_INTRO.closingTitle, closing: [...INGREDIENTS_INTRO.closing], signature: INGREDIENTS_INTRO.signature,
+    items: INGREDIENTS.map((g) => ({
+      bn: g.bn, en: g.en, sciLabel: g.sciLabel ?? "", sci: g.sci ?? "", icon: g.icon, intro: g.intro, points: [...g.points],
+      footnote: g.footnote ?? "", noteKind: g.note?.kind ?? "", note: g.note?.text ?? "",
+    })),
+  },
+  care: {
+    title: CARE_INTRO.title, text: CARE_INTRO.text,
+    groups: CARE_GROUPS.map((g) => ({ title: g.title, icon: g.icon, tips: g.tips.map((t) => ({ title: t.title, icon: t.icon, points: [...t.points], steps: !!t.steps })) })),
+  },
+};
+
+// ── validation (anything saved from the admin goes through this)
+const o = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const str = (v: unknown, d = "", max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : d);
+const arr = (v: unknown, max: number) => (Array.isArray(v) ? v.slice(0, max) : []);
+const lines = (v: unknown, max = 20, len = 500) =>
+  (Array.isArray(v) ? v : typeof v === "string" ? v.split(/\r?\n/) : []).map((x) => str(x, "", len)).filter(Boolean).slice(0, max);
+const icon = (v: unknown, d: string) => str(v, d, 16) || d;
+
+export function normalizeGuides(raw: unknown): GuideContent {
+  const r = o(raw);
+  if (!Object.keys(r).length) return DEFAULT_GUIDES;
+  const d = DEFAULT_GUIDES;
+  const pagesIn = o(r.pages);
+  const pages = Object.fromEntries(GUIDE_KEYS.map((k) => {
+    const p = o(pagesIn[k]);
+    const def = d.pages[k];
+    return [k, {
+      enabled: p.enabled === undefined ? true : p.enabled === true,
+      label: str(p.label, def.label, 60) || def.label, short: str(p.short, def.short, 30) || def.short,
+      icon: icon(p.icon, def.icon), text: str(p.text, def.text, 160),
+    }];
+  })) as Record<GuideKey, GuidePageMeta>;
+  const phones = lines(r.phones, 4, 20).map((p) => p.replace(/[^\d+]/g, "")).filter((p) => p.length >= 6);
+
+  const u = o(r.usage);
+  const usage = {
+    title: str(u.title, d.usage.title, 160) || d.usage.title, intro: str(u.intro, "", 600),
+    notesTitle: str(u.notesTitle, d.usage.notesTitle, 120), notes: lines(u.notes),
+    steps: arr(u.steps, 12).map((x) => {
+      const s = o(x);
+      return {
+        step: str(s.step, "", 30), title: str(s.title, "", 120), icon: icon(s.icon, "✅"),
+        tone: (["amber", "indigo", "emerald"].includes(s.tone as string) ? s.tone : "emerald") as StepTone,
+        points: lines(s.points), text: str(s.text, "", 1500),
+      };
+    }).filter((s) => s.title),
+  };
+
+  const ing = o(r.ingredients);
+  const ingredients = {
+    title: str(ing.title, d.ingredients.title, 160) || d.ingredients.title, subtitle: str(ing.subtitle, "", 120),
+    text: lines(ing.text, 6, 1000), closingTitle: str(ing.closingTitle, "", 160), closing: lines(ing.closing, 6, 1000),
+    signature: str(ing.signature, "", 200),
+    items: arr(ing.items, 40).map((x) => {
+      const g = o(x);
+      return {
+        bn: str(g.bn, "", 80), en: str(g.en, "", 80), sciLabel: str(g.sciLabel, "", 60), sci: str(g.sci, "", 80), icon: icon(g.icon, "🌿"),
+        intro: str(g.intro, "", 1000), points: lines(g.points), footnote: str(g.footnote, "", 600),
+        noteKind: (g.noteKind === "warning" || g.noteKind === "info" ? g.noteKind : "") as IngredientItem["noteKind"], note: str(g.note, "", 1500),
+      };
+    }).filter((g) => g.bn),
+  };
+
+  const c = o(r.care);
+  const care = {
+    title: str(c.title, d.care.title, 160) || d.care.title, text: str(c.text, "", 600),
+    groups: arr(c.groups, 12).map((x) => {
+      const g = o(x);
+      return {
+        title: str(g.title, "", 80), icon: icon(g.icon, "🦷"),
+        tips: arr(g.tips, 40).map((y) => {
+          const t = o(y);
+          return { title: str(t.title, "", 160), icon: icon(t.icon, "✅"), points: lines(t.points, 20, 600), steps: t.steps === true };
+        }).filter((t) => t.title),
+      };
+    }).filter((g) => g.title),
+  };
+
+  return {
+    product: str(r.product, d.product, 80) || d.product,
+    phones: phones.length ? phones : [],
+    showOnThankYou: r.showOnThankYou === undefined ? true : r.showOnThankYou === true,
+    pages, usage, ingredients, care,
+  };
+}
+
+/** Enabled guide pages, in menu order (nav tabs, thank-you cards, sitemap). */
+export function enabledGuides(c: GuideContent) {
+  return GUIDE_KEYS.filter((k) => c.pages[k].enabled).map((k) => ({ key: k, href: GUIDE_HREF[k], ...c.pages[k] }));
+}

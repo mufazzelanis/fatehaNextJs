@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { queryOne } from "@/lib/db";
 import { LANDING_TAG } from "@/lib/data/landings";
-import { GUIDE_PHONES, GUIDE_PRODUCT, GUIDES, prettyPhone } from "@/lib/guides";
+import { enabledGuides, GUIDE_HREF, prettyPhone, type GuideKey } from "@/lib/guides";
+import { getGuideContent } from "@/lib/data/guides";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 /** The live landing page for the product, so "অর্ডার করুন" always points somewhere real. */
@@ -28,9 +29,12 @@ function PhoneIcon() {
  * then "talk to an expert" (call buttons), an order button and links to the other guides.
  * Large type throughout — many readers are older.
  */
-export async function GuideShell({ current, children }: { current: (typeof GUIDES)[number]["href"]; children: ReactNode }) {
-  const order = await orderHref();
-  const others = GUIDES.filter((g) => g.href !== current);
+export async function GuideShell({ current, children }: { current: GuideKey; children: ReactNode }) {
+  const [order, content] = await Promise.all([orderHref(), getGuideContent()]);
+  const GUIDES = enabledGuides(content);
+  const GUIDE_PRODUCT = content.product;
+  const GUIDE_PHONES = content.phones;
+  const others = GUIDES.filter((g) => g.href !== GUIDE_HREF[current]);
   return (
     <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c]">
       <header className="sticky top-0 z-30 border-b border-[#1d6b4a]/10 bg-white/95 backdrop-blur">
@@ -44,7 +48,7 @@ export async function GuideShell({ current, children }: { current: (typeof GUIDE
           </Link>
           <nav aria-label="গাইড" className="-mx-1 flex w-full gap-1.5 overflow-x-auto px-1 pb-0.5 sm:w-auto [&::-webkit-scrollbar]:hidden">
             {GUIDES.map((g) => {
-              const active = g.href === current;
+              const active = g.href === GUIDE_HREF[current];
               return (
                 <Link key={g.href} href={g.href} aria-current={active ? "page" : undefined}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[15px] font-semibold transition ${
@@ -61,8 +65,8 @@ export async function GuideShell({ current, children }: { current: (typeof GUIDE
 
       {/* Talk to an expert + order */}
       <section className="px-4 pb-6 pt-4">
-        <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-[1.3fr_1fr]">
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#123f2c] via-[#1d6b4a] to-[#2f9a6a] p-6 text-white shadow-lg sm:p-8">
+        <div className={`mx-auto grid max-w-5xl gap-4 ${GUIDE_PHONES.length ? "md:grid-cols-[1.3fr_1fr]" : ""}`}>
+          {GUIDE_PHONES.length > 0 && <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#123f2c] via-[#1d6b4a] to-[#2f9a6a] p-6 text-white shadow-lg sm:p-8">
             <div className="pointer-events-none absolute -right-10 -top-10 size-44 rounded-full bg-white/10 blur-2xl" />
             <p className="relative text-[15px] font-semibold text-emerald-100">আপনার দাঁতের যত্নে বিশেষজ্ঞের পরামর্শ</p>
             <h2 className="relative mt-1 font-display text-[26px] font-bold leading-snug sm:text-[30px]">যেকোনো প্রশ্নে কল করুন</h2>
@@ -76,7 +80,7 @@ export async function GuideShell({ current, children }: { current: (typeof GUIDE
                 </a>
               ))}
             </div>
-          </div>
+          </div>}
           <div className="flex flex-col justify-between gap-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-[#1d6b4a]/10 sm:p-8">
             <div>
               <p className="text-[15px] font-semibold text-[#2f9a6a]">ক্যাশ অন ডেলিভারি</p>
@@ -92,7 +96,7 @@ export async function GuideShell({ current, children }: { current: (typeof GUIDE
       </section>
 
       {/* Other guides */}
-      <section className="px-4 pb-12 pt-2">
+      {others.length > 0 && <section className="px-4 pb-12 pt-2">
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-3 font-display text-[20px] font-bold text-[#14261c]">আরও জানুন</h2>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -108,7 +112,7 @@ export async function GuideShell({ current, children }: { current: (typeof GUIDE
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       <LandingFooter name="Fateha BD" />
     </div>

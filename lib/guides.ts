@@ -449,3 +449,8 @@ export function normalizeGuides(raw: unknown): GuideContent {
 export function enabledGuides(c: GuideContent) {
   return GUIDE_KEYS.filter((k) => c.pages[k].enabled).map((k) => ({ key: k, href: GUIDE_HREF[k], ...c.pages[k] }));
 }
+
+/** URL slug ↔ page key (Admin → Pages → /admin/pages/<slug>). */
+export function guideKeyFromSlug(slug: string): GuideKey | null {
+  return GUIDE_KEYS.find((k) => GUIDE_HREF[k] === `/${slug}`) ?? null;
+}

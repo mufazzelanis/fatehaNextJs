@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
-import { query } from "../db";
+import { query, queryOne } from "../db";
+import { GUIDE_HREF, GUIDE_KEYS, type GuideKey } from "../guides";
 import { EVENT_NAMES, type EventName, type PurchaseTrigger, type PublicPixelConfig } from "./shared";
 
 export const MARKETING_TAG = "marketing";
@@ -134,31 +135,61 @@ export async function pixelsFor(landingId: number | null | undefined): Promise<P
   const config = await getMarketingConfig();
   if (!landingId) return config.pixels;
   const scope = (await getLandingPixelScopes()).find((s) => s.landingId === landingId);
-  if (!scope) return config.pixels;
-  if (scope.mode === "own") return scope.pixels;
-  const seen = new Set(scope.pixels.map((p) => p.id));
-  return [...scope.pixels, ...config.pixels.filter((p) => !seen.has(p.id))];
+  return scope ? withMain(scope, config.pixels) : config.pixels;
 }
 
-/** The landing page an event URL belongs to (/<slug>… or the landing thank-you page /order/success?l=<slug>). */
-export async function landingIdForUrl(url: string | undefined): Promise<number | null> {
-  if (!url) return null;
-  let path = "";
-  let l = "";
+const withMain = (scope: { mode: PixelMode; pixels: PixelEntry[] }, main: PixelEntry[]) => {
+  if (scope.mode === "own") return scope.pixels;
+  const seen = new Set(scope.pixels.map((p) => p.id));
+  return [...scope.pixels, ...main.filter((p) => !seen.has(p.id))];
+};
+
+// ───────────── per-page pixels (content pages: /how-to-use, /ingredients, /dental-care)
+
+/** settings.page_pixels = { [pageKey]: { mode, pixels } } — kept apart from the page content because it holds tokens. */
+export const PAGE_PIXELS_KEY = "page_pixels";
+export type PagePixelSetting = { mode: PixelMode; pixels: PixelEntry[] };
+
+/** Raw per-page pixel settings (server only: includes tokens). */
+export async function readPagePixels(): Promise<Record<GuideKey, PagePixelSetting>> {
+  const row = await queryOne<{ value: string | null }>("SELECT `value` FROM settings WHERE `key` = ?", [PAGE_PIXELS_KEY]);
+  let raw: Record<string, { mode?: unknown; pixels?: unknown }> = {};
+  try { raw = JSON.parse(row?.value || "{}"); } catch {}
+  return Object.fromEntries(GUIDE_KEYS.map((k) => {
+    const r = raw[k] ?? {};
+    const mode: PixelMode = r.mode === "own" || r.mode === "both" ? r.mode : "main";
+    return [k, { mode, pixels: parsePixelList(JSON.stringify(r.pixels ?? [])) }];
+  })) as Record<GuideKey, PagePixelSetting>;
+}
+
+/** Any page with its own pixels: landing pages (by slug) and content pages (by path). */
+export type PixelScope = { slug: string; name: string; mode: PixelMode; pixels: PixelEntry[]; landingId: number | null };
+
+export async function getPixelScopes(): Promise<PixelScope[]> {
+  "use cache";
+  cacheTag(MARKETING_TAG, "landings");
+  cacheLife("hours");
+  const [landings, pages] = await Promise.all([getLandingPixelScopes(), readPagePixels()]);
+  const pageScopes = GUIDE_KEYS
+    .filter((k) => pages[k].mode !== "main" && pages[k].pixels.length > 0)
+    .map((k) => ({ slug: GUIDE_HREF[k].slice(1), name: GUIDE_HREF[k], mode: pages[k].mode, pixels: pages[k].pixels, landingId: null }));
+  return [...landings.map((l) => ({ slug: l.slug, name: l.name, mode: l.mode, pixels: l.pixels, landingId: l.landingId })), ...pageScopes];
+}
+
+/** Pixels for a browser event, from its page URL (landing slug, content page path, or the landing thank-you page). */
+export async function pixelsForUrl(url: string | undefined): Promise<PixelEntry[]> {
+  const config = await getMarketingConfig();
+  let slug = "";
   try {
-    const u = new URL(url);
-    path = u.pathname;
-    l = u.searchParams.get("l") ?? "";
-  } catch {
-    return null;
-  }
-  const slug = path === "/order/success" ? l : path.split("/")[1] ?? "";
-  if (!slug) return null;
-  return (await getLandingPixelScopes()).find((s) => s.slug === slug)?.landingId ?? null;
+    const u = new URL(url ?? "");
+    slug = u.pathname === "/order/success" ? u.searchParams.get("l") ?? "" : u.pathname.split("/")[1] ?? "";
+  } catch {}
+  const scope = slug ? (await getPixelScopes()).find((s) => s.slug === slug) : undefined;
+  return scope ? withMain(scope, config.pixels) : config.pixels;
 }
 
 export async function getPublicPixelConfig(): Promise<PublicPixelConfig | null> {
-  const [c, scopes] = await Promise.all([getMarketingConfig(), getLandingPixelScopes()]);
+  const [c, scopes] = await Promise.all([getMarketingConfig(), getPixelScopes()]);
   const anyPixel = c.pixels.length > 0 || scopes.length > 0;
   const anyToken = c.pixels.some((p) => p.token) || scopes.some((s) => s.pixels.some((p) => p.token));
   const capi = c.capiSwitch && anyToken;

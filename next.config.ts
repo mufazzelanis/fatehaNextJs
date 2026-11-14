@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
       // Landing content & checkout moved into the per-landing editor.
       { source: "/admin/content", destination: "/admin/landings", permanent: false },
       { source: "/admin/checkout", destination: "/admin/landings", permanent: false },
+      // Guide pages became individual pages under Admin → Pages.
+      { source: "/admin/guides", destination: "/admin/pages", permanent: false },
     ];
   },
   /* config options here */

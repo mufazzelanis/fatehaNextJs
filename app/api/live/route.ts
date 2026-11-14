@@ -6,8 +6,8 @@ const pick = <T extends string>(list: readonly T[], v: unknown, fallback: T): T 
 
 /** The visit this browser has open on this landing page (a gap of more than 2 minutes starts a new visit). */
 const openVisit = (sid: string, landing: number) =>
-  queryOne<{ id: number; started_at: Date }>(
-    `SELECT id, started_at FROM landing_visits
+  queryOne<{ id: number; started_at: Date; page?: string | null }>(
+    `SELECT id, started_at, page FROM landing_visits
      WHERE sid = ? AND landing_id = ? AND COALESCE(left_at, last_seen) >= NOW() - INTERVAL 2 MINUTE
      ORDER BY id DESC LIMIT 1`,
     [sid, landing],
@@ -48,6 +48,12 @@ export async function POST(request: Request) {
   // Path only (no query string), e.g. "/products/dentocare" — shown on the Live Visitors page.
   const page = typeof body.p === "string" && /^\/[\w\-/.%]{0,159}$/.test(body.p) ? body.p : null;
   let visit = await openVisit(sid, id);
+  // Main site: a page view each time this visit arrives on a new page (heartbeats on the same page don't count).
+  if (id === 0 && page && (!visit || visit.page !== page)) {
+    await execute(
+      "INSERT INTO page_views (path, day, views) VALUES (?, CURDATE(), 1) ON DUPLICATE KEY UPDATE views = views + 1", [page],
+    ).catch(() => {});
+  }
   if (visit) {
     await execute(
       `UPDATE landing_visits SET last_seen = NOW(), left_at = NULL, section = ?, page = COALESCE(?, page), reached_form = reached_form OR ? WHERE id = ?`,
@@ -79,6 +85,7 @@ export async function POST(request: Request) {
   if (Math.random() < 0.005) {
     await execute("DELETE FROM landing_visits WHERE last_seen < NOW() - INTERVAL 90 DAY").catch(() => {});
     await execute("DELETE FROM landing_clicks WHERE created_at < NOW() - INTERVAL 90 DAY").catch(() => {});
+    await execute("DELETE FROM page_views WHERE day < CURDATE() - INTERVAL 400 DAY").catch(() => {});
   }
   return done;
 }

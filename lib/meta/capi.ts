@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { execute, query, queryOne } from "../db";
-import { getLandingPixelScopes, getMarketingConfig, pixelsFor, type MarketingConfig, type PixelEntry } from "./config";
+import { getMarketingConfig, getPixelScopes, pixelsFor, type MarketingConfig, type PixelEntry } from "./config";
 import type { EventName } from "./shared";
 
 /** Hashed and raw user parameters accepted by the Conversions API. */
@@ -104,9 +104,10 @@ async function logEvent(e: ServerEvent, pixelId: string, result: SendResult, opt
  * Sends events to the pixels of the page they came from (a landing page's own pixels, or the main site's)
  * and logs each delivery. Never throws.
  */
-export async function sendServerEvents(events: ServerEvent[], opts: { orderId?: number; testCode?: string; landingId?: number | null } = {}): Promise<SendResult> {
+export async function sendServerEvents(events: ServerEvent[], opts: { orderId?: number; testCode?: string; landingId?: number | null; pixels?: PixelEntry[] } = {}): Promise<SendResult> {
   const config = await getMarketingConfig();
-  const pixels = (await pixelsFor(opts.landingId)).filter((p) => p.token);
+  // Explicit pixels (a page with its own pixels) win; otherwise the order's landing page decides.
+  const pixels = (opts.pixels ?? (await pixelsFor(opts.landingId))).filter((p) => p.token);
   const wanted = events.filter((e) => config.events[e.event_name as EventName] !== false);
   if (!config.capiSwitch || !pixels.length || !wanted.length) {
     return { ok: false, status: null, message: "Conversions API is disabled for this event" };
@@ -144,7 +145,7 @@ export async function retryFailedEvents(): Promise<{ retried: number; succeeded:
      ORDER BY id LIMIT 200`,
   );
   // Main site pixels and every landing page's own pixels.
-  const allPixels = [...config.pixels, ...(await getLandingPixelScopes()).flatMap((sc) => sc.pixels)];
+  const allPixels = [...config.pixels, ...(await getPixelScopes()).flatMap((sc) => sc.pixels)];
   let succeeded = 0;
   for (const row of rows) {
     const pixel = allPixels.find((p) => p.id === row.pixel_id && p.token);

@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { getCustomer } from "@/lib/auth";
-import { getMarketingConfig, landingIdForUrl } from "@/lib/meta/config";
+import { getMarketingConfig, pixelsForUrl } from "@/lib/meta/config";
 import { customerUserData, sendServerEvents, type UserData } from "@/lib/meta/capi";
 import { requestUserData } from "@/lib/meta/request";
 import { query } from "@/lib/db";
@@ -64,10 +64,10 @@ export async function trackServerEvent(input: { name: string; eventId: string; u
     }
   }
 
-  // A landing page with its own pixels gets its events; everything else goes to the main site pixels.
-  const landingId = await landingIdForUrl(input.url);
+  // A landing / content page with its own pixels gets its events; everything else goes to the main site pixels.
+  const pixels = await pixelsForUrl(input.url);
   // Respond to the browser immediately; talk to Meta afterwards.
   after(() =>
-    sendServerEvents([{ event_name: name, event_id: input.eventId, event_source_url: url, user_data: userData, custom_data: customData }], { landingId }),
+    sendServerEvents([{ event_name: name, event_id: input.eventId, event_source_url: url, user_data: userData, custom_data: customData }], { pixels }),
   );
 }

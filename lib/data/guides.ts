@@ -10,6 +10,11 @@ export async function getGuideContent(): Promise<GuideContent> {
   "use cache";
   cacheTag(GUIDES_TAG);
   cacheLife("days");
+  return readGuideContent();
+}
+
+/** Uncached (admin saves). */
+export async function readGuideContent(): Promise<GuideContent> {
   const row = await queryOne<{ value: string | null }>("SELECT `value` FROM settings WHERE `key` = 'guide_content'");
   let raw: unknown = null;
   try {

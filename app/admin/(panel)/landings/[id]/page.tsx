@@ -13,7 +13,8 @@ import { CopyUrl } from "../landing-forms";
 import { ContentEditor } from "./content-editor";
 import { CheckoutEditor } from "./checkout-editor";
 import { LandingSetupForm } from "./setup-form";
-import { LandingPixelForm, type LandingPixelRow } from "./pixel-form";
+import { PixelScopeForm, type LandingPixelRow } from "@/components/admin/pixel-scope-form";
+import { saveLandingPixels } from "@/app/actions/landing-pixels";
 import { getMarketingConfig, MAX_PIXELS, parsePixelList, type PixelMode } from "@/lib/meta/config";
 
 export const metadata = { title: "Edit landing page" };
@@ -109,5 +110,5 @@ async function PixelTab({ landingId, mode }: { landingId: number; mode: string |
     id: p.id, label: p.label, hasToken: !!p.token, tokenHint: p.token ? "••••" + p.token.slice(-4) : "",
   }));
   const m: PixelMode = mode === "own" || mode === "both" ? mode : "main";
-  return <LandingPixelForm landingId={landingId} mode={m} pixels={pixels} mainPixels={config.pixels.map((p) => p.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />;
+  return <PixelScopeForm save={saveLandingPixels} target={{ name: "landing", value: landingId }} mode={m} pixels={pixels} mainPixels={config.pixels.map((p) => p.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />;
 }

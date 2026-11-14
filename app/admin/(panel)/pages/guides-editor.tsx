@@ -60,11 +60,14 @@ const blankIngredient = (): IngredientItem => ({ bn: "", en: "", sciLabel: "ব�
 const blankTip = (): CareTipItem => ({ title: "", icon: "✅", points: [], steps: false });
 const blankGroup = (): CareGroupItem => ({ title: "", icon: "🦷", tips: [blankTip()] });
 
-/** Admin editor for the three guide pages — everything is saved together with one button. */
-export function GuidesEditor({ initial }: { initial: GuideContent }) {
+/**
+ * Editor for the content pages. With `only`, it edits one page (Admin → Pages → <page>) or the shared
+ * "general" settings, and saving changes just that part.
+ */
+export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: Tab }) {
   const [c, setC] = useState(initial);
   const [saved, setSaved] = useState(() => JSON.stringify(initial));
-  const [tab, setTab] = useState<Tab>("general");
+  const [tab, setTab] = useState<Tab>(only ?? "general");
   const [state, action] = useActionState(async (prev: typeof initialState, fd: FormData) => {
     const r = await saveGuides(prev, fd);
     if (r.ok) setSaved(String(fd.get("content")));
@@ -84,28 +87,29 @@ export function GuidesEditor({ initial }: { initial: GuideContent }) {
   return (
     <form action={action} className="space-y-5">
       <input type="hidden" name="content" value={json} />
+      <input type="hidden" name="page" value={only ?? ""} />
 
       {/* Tabs */}
       <div className="sticky top-16 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50/95 px-1 py-2 backdrop-blur">
-        <div className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-xs ring-1 ring-slate-200/80">
+        {!only && <div className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-xs ring-1 ring-slate-200/80">
           {TABS.map((t) => (
             <button key={t.id} type="button" onClick={() => setTab(t.id)}
               className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-medium transition ${tab === t.id ? "bg-brand-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}>
               {t.label}
             </button>
           ))}
-        </div>
+        </div>}
         <div className="ml-auto flex items-center gap-2">
           {dirty && <span className="text-xs font-medium text-amber-700">● Unsaved changes</span>}
-          <SubmitButton pendingText="Saving…">Save guide pages</SubmitButton>
+          <SubmitButton pendingText="Saving…">{only ? "Save" : "Save guide pages"}</SubmitButton>
         </div>
       </div>
       <FormAlert error={state.error} message={state.message} />
 
       {tab === "general" && (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className={only ? "" : "grid gap-5 lg:grid-cols-2"}>
           <section className="a-card space-y-4 p-5">
-            <h2 className="font-medium text-slate-900">Product & contact</h2>
+            <h2 className="font-medium text-slate-900">Product & contact <span className="text-xs font-normal text-slate-500">— shared by all pages</span></h2>
             <Text label="Product name" value={c.product} onChange={(v) => up("product", v)} hint="Shown in the header, page titles and the order box." />
             <Lines label="Expert call numbers" value={c.phones} onChange={(v) => up("phones", v)} hint="One number per line (up to 4). Shown as call buttons at the bottom of every guide page. Leave empty to hide." rows={3} />
             <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm">
@@ -113,7 +117,7 @@ export function GuidesEditor({ initial }: { initial: GuideContent }) {
               <span><b className="font-medium text-slate-900">Show the guides on the order thank-you page</b><br /><span className="text-slate-500">“পণ্য হাতে পাওয়ার আগেই জেনে নিন” cards after a landing-page order.</span></span>
             </label>
           </section>
-          <section className="a-card space-y-4 p-5">
+          {!only && <section className="a-card space-y-4 p-5">
             <h2 className="font-medium text-slate-900">Pages</h2>
             {GUIDE_KEYS.map((k) => {
               const p = c.pages[k];
@@ -136,9 +140,11 @@ export function GuidesEditor({ initial }: { initial: GuideContent }) {
                 </div>
               );
             })}
-          </section>
+          </section>}
         </div>
       )}
+
+      {only && only !== "general" && <PageMeta k={only} c={c} up={up} />}
 
       {tab === "usage" && (
         <div className="space-y-5">
@@ -275,9 +281,9 @@ export function GuidesEditor({ initial }: { initial: GuideContent }) {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <button type="button" disabled={resetting}
+        {only && only !== "general" ? <span /> : <button type="button" disabled={resetting}
           onClick={() => {
-            if (!window.confirm("Put back the original content from the documents? Your edits will be lost.")) return;
+            if (!window.confirm("Put back the original content of ALL pages (from the documents)? Your edits will be lost.")) return;
             startReset(async () => {
               const r = await resetGuides();
               if (r.ok) { setC(DEFAULT_GUIDES); setSaved(JSON.stringify(DEFAULT_GUIDES)); }
@@ -286,10 +292,33 @@ export function GuidesEditor({ initial }: { initial: GuideContent }) {
           }}
           className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-50">
           {resetting ? "Restoring…" : "Restore original content"}
-        </button>
+        </button>}
         {resetMsg && <span className="text-sm text-emerald-700">{resetMsg}</span>}
-        <SubmitButton pendingText="Saving…">Save guide pages</SubmitButton>
+        <SubmitButton pendingText="Saving…">{only ? "Save" : "Save guide pages"}</SubmitButton>
       </div>
     </form>
+  );
+}
+
+/** Name, menu label, icon, description and published switch of one page. */
+function PageMeta({ k, c, up }: { k: GuideKey; c: GuideContent; up: <K extends keyof GuideContent>(key: K, v: GuideContent[K]) => void }) {
+  const p = c.pages[k];
+  const set = (patch: Partial<typeof p>) => up("pages", { ...c.pages, [k]: { ...p, ...patch } });
+  return (
+    <section className={`a-card space-y-3 p-5 ${p.enabled ? "" : "bg-slate-50"}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-medium text-slate-900">Page name & visibility</h2>
+        <label className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${p.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
+          <input type="checkbox" checked={p.enabled} onChange={(e) => set({ enabled: e.target.checked })} className="size-4 accent-brand-700" />
+          {p.enabled ? "Published" : "Hidden (page shows 404)"}
+        </label>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[5rem_1fr_1fr]">
+        <Icon value={p.icon} onChange={(v) => set({ icon: v })} />
+        <Text label="Page name" value={p.label} onChange={(v) => set({ label: v })} />
+        <Text label="Short tab name" value={p.short} onChange={(v) => set({ short: v })} />
+      </div>
+      <Text label="One-line description (cards on the other pages and the thank-you page)" value={p.text} onChange={(v) => set({ text: v })} />
+    </section>
   );
 }

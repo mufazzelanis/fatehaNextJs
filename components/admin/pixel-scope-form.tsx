@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { saveLandingPixels } from "@/app/actions/landing-pixels";
-import { initialState } from "@/lib/action-state";
+import { initialState, type ActionState } from "@/lib/action-state";
 import { FieldError, FormAlert, SubmitButton } from "@/components/form-bits";
 import { EyeIcon, PlusIcon, TrashIcon } from "@/components/icons";
 
@@ -21,11 +20,17 @@ const MODES: { value: Mode; title: string; text: string }[] = [
   { value: "both", title: "Own pixels + main site pixels", text: "Every event goes to both, de-duplicated by event ID." },
 ];
 
-/** Landing page → Pixel & CAPI tab. Tokens are write-only (never sent back to the browser). */
-export function LandingPixelForm({ landingId, mode: initialMode, pixels, mainPixels, maxPixels, capiOn }: {
-  landingId: number; mode: Mode; pixels: LandingPixelRow[]; mainPixels: string[]; maxPixels: number; capiOn: boolean;
+/**
+ * "Pixel & CAPI" tab of a landing page or a content page: which Facebook pixels the page reports to.
+ * Tokens are write-only (never sent back to the browser). `target` names the page for the save action.
+ */
+export function PixelScopeForm({ save, target, kind = "landing page", mode: initialMode, pixels, mainPixels, maxPixels, capiOn }: {
+  save: (prev: ActionState, fd: FormData) => Promise<ActionState>;
+  target: { name: string; value: string | number };
+  kind?: string;
+  mode: Mode; pixels: LandingPixelRow[]; mainPixels: string[]; maxPixels: number; capiOn: boolean;
 }) {
-  const [state, action] = useActionState(saveLandingPixels, initialState);
+  const [state, action] = useActionState(save, initialState);
   const [mode, setMode] = useState<Mode>(initialMode);
   const [rows, setRows] = useState<EditRow[]>(() => (pixels.length ? pixels.map((p) => ({ ...p, token: "", removeToken: false, showToken: false, key: nextKey++ })) : [blank()]));
   const update = (key: number, patch: Partial<EditRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -34,15 +39,17 @@ export function LandingPixelForm({ landingId, mode: initialMode, pixels, mainPix
 
   return (
     <form action={action} className="space-y-5">
-      <input type="hidden" name="landing" value={landingId} />
+      <input type="hidden" name={target.name} value={target.value} />
       <input type="hidden" name="pixels" value={payload} />
       <input type="hidden" name="mode" value={mode} />
 
       <section className="a-card space-y-3 p-5">
         <div>
-          <h2 className="font-medium text-slate-900">Which Facebook pixels does this landing page use?</h2>
+          <h2 className="font-medium text-slate-900">Which Facebook pixels does this {kind} use?</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Applies to the page itself, its thank-you page and its orders (Purchase, Delivered, Cancelled — browser and Conversions API).
+            {kind === "landing page"
+              ? "Applies to the page itself, its thank-you page and its orders (Purchase, Delivered, Cancelled — browser and Conversions API)."
+              : "Applies to every visit of this page — PageView and the other page events, in the browser and through the Conversions API (server)."}
             Events, purchase timing and the Conversions API switch are shared settings on the <Link href="/admin/pixel" className="font-medium text-brand-700 underline">Facebook Pixel</Link> page.
           </p>
         </div>

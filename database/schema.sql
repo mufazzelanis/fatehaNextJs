@@ -392,3 +392,11 @@ ALTER TABLE landing_pages ADD COLUMN IF NOT EXISTS pixels TEXT NULL;
 
 -- Live visitors on the main site too (landing_id 0 = main site); the page the visitor is on now
 ALTER TABLE landing_visits ADD COLUMN IF NOT EXISTS page VARCHAR(160) NULL;
+
+-- Main-site page views per day (counted once per visit and page by the live heartbeat; Admin → Pages stats)
+CREATE TABLE IF NOT EXISTS page_views (
+  path   VARCHAR(160) NOT NULL,
+  day    DATE         NOT NULL,
+  views  INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (path, day)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

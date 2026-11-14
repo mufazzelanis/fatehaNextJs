@@ -7,6 +7,7 @@ import { dateTime, money, ORDER_STATUSES, STATUS_META, type OrderStatus } from "
 import { StatusBadge } from "@/components/admin/ui";
 import { Spinner } from "@/components/form-bits";
 import { EyeIcon, PhoneIcon, PrinterIcon, TrashIcon } from "@/components/icons";
+import { OrderSheet } from "./order-sheet";
 
 type Row = {
   id: number;
@@ -34,6 +35,7 @@ export function OrdersTable({ orders, perms }: { orders: Row[]; perms: Perms }) 
   const [pending, startTransition] = useTransition();
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sheetId, setSheetId] = useState<number | null>(null);
 
   const visible = orders.filter((o) => selected.has(o.id)).map((o) => o.id);
   const allChecked = orders.length > 0 && visible.length === orders.length;
@@ -120,13 +122,21 @@ export function OrdersTable({ orders, perms }: { orders: Row[]; perms: Perms }) 
               </div>
               {o.pay && <div className="mt-1.5 text-right"><PayPill pay={o.pay} /></div>}
             </Link>
-            <a href={`tel:${o.phone}`} aria-label={`Call ${o.customer_name}`}
-              className="grid size-9 shrink-0 place-items-center self-center rounded-full bg-brand-50 text-brand-700 transition active:scale-95">
-              <PhoneIcon className="size-4" />
-            </a>
+            <div className="flex shrink-0 flex-col justify-center gap-2">
+              <button type="button" onClick={() => setSheetId(o.id)} aria-label={`Quick view ${o.order_no}`}
+                className="grid size-9 place-items-center rounded-full bg-slate-900 text-white shadow-sm transition active:scale-95">
+                <EyeIcon className="size-4" />
+              </button>
+              <a href={`tel:${o.phone}`} aria-label={`Call ${o.customer_name}`}
+                className="grid size-9 place-items-center rounded-full bg-brand-50 text-brand-700 transition active:scale-95">
+                <PhoneIcon className="size-4" />
+              </a>
+            </div>
           </li>
         ))}
       </ul>
+
+      <OrderSheet ids={orders.map((o) => o.id)} openId={sheetId} onClose={() => setSheetId(null)} onOpen={setSheetId} canEdit={perms.edit} canPrint={perms.export} />
 
       {/* Tablets & desktops: table */}
       <div className="hidden overflow-x-auto md:block">

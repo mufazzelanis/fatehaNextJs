@@ -3,7 +3,7 @@
 import { trackServerEvent } from "@/app/actions/pixel";
 import type { EventName } from "./shared";
 
-type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...a: unknown[]) => void; queue?: unknown[][]; loaded?: boolean; version?: string; push?: unknown };
+type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...a: unknown[]) => void; queue?: unknown[][]; loaded?: boolean; version?: string; push?: unknown; disablePushState?: boolean };
 
 declare global {
   interface Window {
@@ -39,6 +39,9 @@ function loadScript() {
   fbq.loaded = true;
   fbq.version = "2.0";
   fbq.queue = [];
+  // fbevents.js would send its own PageView (without our event ID) on every client-side navigation —
+  // a duplicate Meta cannot de-duplicate. Our MetaPixel component already tracks each navigation.
+  fbq.disablePushState = true;
   window.fbq = fbq;
   window._fbq = fbq;
   const script = document.createElement("script");

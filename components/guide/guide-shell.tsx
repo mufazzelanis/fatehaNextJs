@@ -7,6 +7,7 @@ import { enabledGuides, GUIDE_HREF, prettyPhone, type GuideKey } from "@/lib/gui
 import { getGuideContent } from "@/lib/data/guides";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { GuideImage } from "./guide-image";
+import { ImageZoom } from "./image-zoom";
 
 /** The live landing page for the product, so "অর্ডার করুন" always points somewhere real. */
 async function orderHref() {
@@ -37,7 +38,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
   const GUIDE_PHONES = content.phones;
   const others = GUIDES.filter((g) => g.href !== GUIDE_HREF[current]);
   return (
-    <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c]">
+    <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c] wrap-anywhere">
       <header className="sticky top-0 z-30 border-b border-[#1d6b4a]/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
           <Link href={order.split("#")[0]} className="flex items-center gap-2.5">
@@ -115,6 +116,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
         </div>
       </section>}
 
+      <ImageZoom />
       <LandingFooter name="Fatehabd" />
     </div>
   );

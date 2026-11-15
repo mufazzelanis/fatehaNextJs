@@ -58,7 +58,7 @@ export default async function DentalCarePage() {
                   const n = start[gi] + ti + 1;
                   return (
                     <article key={ti} id={`tip-${n}`} className="scroll-mt-32 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-[#1d6b4a]/10 sm:scroll-mt-36">
-                      {t.image && <GuideImage src={t.image} alt={t.title || `পরামর্শ ${bnNum(n)}`} sizes="(min-width: 768px) 460px, calc(100vw - 80px)" className="mb-5" />}
+                      {t.image && <GuideImage src={t.image} alt={t.title || `পরামর্শ ${bnNum(n)}`} sizes="(min-width: 768px) 460px, calc(100vw - 80px)" priority={n === 1 && !c.care.image && !g.image} className="mb-5" />}
                       <div className="flex items-start gap-3.5">
                         <span className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-[#e8f3ec] text-3xl" aria-hidden="true">
                           {t.icon}

@@ -32,29 +32,37 @@ export const viewport: Viewport = {
   themeColor: "#12b3b8",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const pixel = await getPublicPixelConfig();
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="bn" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Suspense><AttributionTracker /></Suspense>
         <Suspense><SiteLiveTracker /></Suspense>
-        {pixel && (
-          <Suspense>
-            <MetaPixel config={{ pixelIds: pixel.pixelIds, scopes: pixel.scopes, browser: pixel.browser, capi: pixel.capi, serverPageView: pixel.serverPageView, events: pixel.events }} />
-          </Suspense>
-        )}
-        {pixel?.browser && (
-          <noscript>
-            {pixel.pixelIds.map((id) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={id} height="1" width="1" style={{ display: "none" }} alt=""
-                src={`https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`} />
-            ))}
-          </noscript>
-        )}
+        {/* Always the same boundary: adding/removing it with the pixel settings made cached page shells
+            stop matching ("Couldn't find all resumable slots") and React re-rendered the whole page in the browser. */}
+        <Suspense><PixelLoader /></Suspense>
       </body>
     </html>
+  );
+}
+
+/** Facebook pixel for the whole site (cached config); renders nothing when no pixel is set up. */
+async function PixelLoader() {
+  const pixel = await getPublicPixelConfig();
+  if (!pixel) return null;
+  return (
+    <>
+      <MetaPixel config={{ pixelIds: pixel.pixelIds, scopes: pixel.scopes, browser: pixel.browser, capi: pixel.capi, serverPageView: pixel.serverPageView, events: pixel.events }} />
+      {pixel.browser && (
+        <noscript>
+          {pixel.pixelIds.map((id) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={id} height="1" width="1" style={{ display: "none" }} alt=""
+              src={`https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`} />
+          ))}
+        </noscript>
+      )}
+    </>
   );
 }

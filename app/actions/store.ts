@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { rememberOrder } from "@/lib/order-receipt";
 import { after } from "next/server";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { execute, queryOne, transaction } from "@/lib/db";
@@ -179,5 +180,6 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
   const marketing = await getMarketingConfig();
   if (marketing.capiSwitch && marketing.purchaseTrigger === "placed") after(() => sendPurchaseForOrder(placed.orderId));
 
+  await rememberOrder(placed.no); // only this browser sees the name & address on the thank-you page
   redirect(`/checkout/success?no=${placed.no}`);
 }

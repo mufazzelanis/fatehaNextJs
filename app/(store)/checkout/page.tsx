@@ -11,7 +11,7 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Checkout</h1>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-3xl bg-white" />}>
+      <Suspense fallback={<div className="min-h-svh animate-pulse rounded-3xl bg-white lg:min-h-160" />}>
         <Checkout />
       </Suspense>
     </div>

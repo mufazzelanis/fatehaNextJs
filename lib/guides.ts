@@ -559,7 +559,9 @@ export function guideKeyFromSlug(slug: string): GuideKey | null {
 export function guideImage(src: string, sizes: string) {
   if (src.startsWith("/guides/")) {
     const small = src.replace(/\.webp$/, "-540.webp");
-    return { src, srcSet: `${small} 540w, ${src} 1080w`, sizes };
+    const mid = src.replace(/\.webp$/, "-720.webp");
+    // 720 fits most phones (≈ 360-412 px wide × 1.75-2× pixel density) — before, they had to take the 1080 copy.
+    return { src: mid, srcSet: `${small} 540w, ${mid} 720w, ${src} 1080w`, sizes };
   }
   const url = `/media/${src}`;
   return { src: `${url}?w=640`, srcSet: [384, 640, 828].map((w) => `${url}?w=${w} ${w}w`).join(", "), sizes };

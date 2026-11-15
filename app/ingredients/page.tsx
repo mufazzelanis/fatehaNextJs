@@ -43,7 +43,7 @@ export default async function IngredientsPage() {
           {g.items.map((it, i) => (
             <article key={i} id={`ingredient-${i + 1}`}
               className={`scroll-mt-24 rounded-3xl bg-white p-6 shadow-sm ring-1 ${it.noteKind === "warning" ? "ring-2 ring-rose-200" : "ring-[#1d6b4a]/10"}`}>
-              {it.image && <GuideImage src={it.image} alt={it.bn || it.en} sizes="(min-width: 768px) 460px, calc(100vw - 80px)" className="mb-5" />}
+              {it.image && <GuideImage src={it.image} alt={it.bn || it.en} sizes="(min-width: 768px) 460px, calc(100vw - 80px)" priority={i === 0 && !g.image} className="mb-5" />}
               {(it.bn || it.en) && <div className="flex items-start gap-4">
                 <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#e8f3ec] to-[#d2ecdc] text-4xl" aria-hidden="true">{it.icon}</span>
                 <div className="min-w-0">

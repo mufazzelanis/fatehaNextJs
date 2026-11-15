@@ -35,7 +35,7 @@ export default async function HowToUsePage() {
               <li key={i} className={`relative rounded-3xl bg-white p-6 shadow-sm ring-1 sm:p-8 ${t.ring}`}>
                 {/* timeline line between steps */}
                 {i < u.steps.length - 1 && <span aria-hidden="true" className="absolute -bottom-5 left-13 h-5 w-1 rounded bg-[#cfe6d8] sm:left-15" />}
-                {s.image && <GuideImage src={s.image} alt={s.title || s.step} sizes="(min-width: 768px) 704px, calc(100vw - 80px)" className="mb-5" />}
+                {s.image && <GuideImage src={s.image} alt={s.title || s.step} sizes="(min-width: 768px) 704px, calc(100vw - 80px)" priority={i === 0 && !u.image} className="mb-5" />}
                 {(s.title || s.step || s.text || s.points.length > 0) && <div className="flex items-start gap-4 sm:gap-5">
                   <span className={`grid size-14 shrink-0 place-items-center rounded-2xl bg-linear-to-br text-3xl text-white shadow-md sm:size-16 ${t.icon}`} aria-hidden="true">{s.icon}</span>
                   <div className="min-w-0 flex-1">

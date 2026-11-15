@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getOrderByNo } from "@/lib/data/orders";
+import { placedHere } from "@/lib/order-receipt";
 import { getPaymentConfig } from "@/lib/data/catalog";
 import { getMarketingConfig } from "@/lib/meta/config";
 import { purchaseEventId } from "@/lib/meta/capi";
@@ -27,12 +28,15 @@ export default function SuccessPage({ searchParams }: PageProps<"/checkout/succe
 }
 
 async function Success({ searchParams }: Pick<PageProps<"/checkout/success">, "searchParams">) {
+  // Live per-request page: declared before any database call (the driver reads the clock while connecting).
+  await connection();
   const { no } = await searchParams;
   if (typeof no !== "string" || !/^FB\d+$/.test(no)) notFound();
   const order = await getOrderByNo(no);
   if (!order) notFound();
-  await connection();
   const fresh = isWithinHours(order.created_at, 2);
+  // Name & address only for the browser that placed this order (order numbers are easy to guess).
+  const mine = fresh && (await placedHere(order.order_no));
   const [marketing, payments] = await Promise.all([getMarketingConfig(), getPaymentConfig()]);
   const method = isPaymentMethod(order.payment_method) ? order.payment_method : "cod";
   const verify = order.payment_status === "pending_verification";
@@ -83,7 +87,7 @@ async function Success({ searchParams }: Pick<PageProps<"/checkout/success">, "s
           <div className="flex justify-between text-ink-soft"><dt>Delivery</dt><dd className="tabular-nums">{Number(order.shipping_charge) ? bdt(order.shipping_charge) : "Free"}</dd></div>
           <div className="flex justify-between pt-1 text-base font-bold text-ink"><dt>Total · {PAYMENT_LABEL[method]}</dt><dd className="tabular-nums text-fb-700">{bdt(order.total)}</dd></div>
         </dl>
-        {fresh && (
+        {mine && (
           <div className="border-t border-slate-100 px-5 py-4 text-sm">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Delivering to</p>
             <p className="mt-1 font-medium text-ink">{order.customer_name} · {maskPhone(order.phone)}</p>

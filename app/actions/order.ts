@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { getMarketingConfig } from "@/lib/meta/config";
 import { sendPurchaseForOrder } from "@/lib/meta/capi";
 import { redirect } from "next/navigation";
+import { rememberOrder } from "@/lib/order-receipt";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { execute, queryOne, transaction } from "@/lib/db";
 import { getCustomer } from "@/lib/auth";
@@ -169,6 +170,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   }
 
   // &l= tells the thank-you page which landing page (and so which pixels) the order belongs to.
+  await rememberOrder(placed.no); // only this browser sees the name & address on the thank-you page
   redirect(`/order/success?no=${placed.no}&l=${encodeURIComponent(landing.slug)}`);
 }
 

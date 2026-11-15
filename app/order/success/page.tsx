@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getOrderByNo, zoneLabel } from "@/lib/data/orders";
+import { placedHere } from "@/lib/order-receipt";
 import { getLandingById, getLandingSettings } from "@/lib/data/landings";
 import { DEFAULT_CONTENT } from "@/lib/content";
 import { isWithinHours } from "@/lib/format";
@@ -30,6 +31,8 @@ export default function OrderSuccessPage({ searchParams }: PageProps<"/order/suc
 }
 
 async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, "searchParams">) {
+  // Live per-request page: declared before any database call (the driver reads the clock while connecting).
+  await connection();
   const { no } = await searchParams;
   if (typeof no !== "string" || !/^[A-Z]{1,5}\d+$/.test(no)) notFound();
   const order = await getOrderByNo(no);
@@ -38,8 +41,9 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
   const [landing, ls] = await Promise.all([order.landing_id ? getLandingById(order.landing_id) : null, getLandingSettings()]);
   const c = landing?.content ?? DEFAULT_CONTENT;
   // Personal details are only shown right after ordering; later lookups go through /track.
-  await connection(); // the freshness check below reads the current time
   const fresh = isWithinHours(order.created_at, 2);
+  // Name & address only for the browser that placed this order (order numbers are easy to guess).
+  const mine = fresh && (await placedHere(order.order_no));
   const date = new Date(order.created_at).toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dhaka",
   });
@@ -120,7 +124,7 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
             <div>
               <h2 className="text-[15px] font-semibold text-[#1a202c]">Billing address</h2>
               <address className="mt-6 pl-2 text-[10.5px] not-italic leading-[1.55] text-[#64748b]">
-                {fresh ? (
+                {mine ? (
                   <>
                     <span className="block font-sans">{order.customer_name}</span>
                     <span className="block font-sans">{order.address}</span>

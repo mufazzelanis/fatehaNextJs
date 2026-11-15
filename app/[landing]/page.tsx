@@ -239,7 +239,7 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
   };
 
   return (
-    <div className="bg-white font-sans text-[#111]">
+    <div className="bg-white font-sans text-[#111] wrap-anywhere">
       {/* ===== HERO: product photo + label banner (always first) ===== */}
       <section className="pb-6 pt-4 sm:pt-6"
         style={{ backgroundImage: `linear-gradient(to bottom, ${t.heroFrom}, color-mix(in srgb, ${t.heroFrom} 50%, white), ${t.heroTo})` }}>

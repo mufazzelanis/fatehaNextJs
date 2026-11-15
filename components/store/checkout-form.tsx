@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { placeStoreOrder, quoteCart } from "@/app/actions/store";
 import { initialState } from "@/lib/action-state";
 import { bdt, deliveryCharge, type StoreConfig } from "@/lib/store-config";
@@ -40,10 +40,13 @@ function CopyText({ value }: { value: string }) {
   );
 }
 
+const noop = () => () => {};
+
 export function StoreCheckout({ store, payments, methods, prefill }: {
   store: StoreConfig; payments: PaymentConfig; methods: PaymentMethod[]; prefill: Prefill;
 }) {
   const { items, subtotal } = useCart();
+  const hydrated = useSyncExternalStore(noop, () => true, () => false);
   const [state, action, pending] = useActionState(placeStoreOrder, initialState);
   const v = state.values ?? {};
   const fe = state.fieldErrors ?? {};
@@ -69,6 +72,20 @@ export function StoreCheckout({ store, payments, methods, prefill }: {
 
   const shipping = deliveryCharge(store, zone === "inside", subtotal);
   const total = subtotal + shipping;
+
+  // The cart lives in this browser, so the server cannot know it. Until the browser has read it, hold the
+  // form's space: no "cart is empty" flash, and the footer does not jump when the form appears.
+  if (!hydrated) {
+    return (
+      <div aria-busy="true" aria-label="Loading checkout" className="grid min-h-svh grid-cols-1 content-start gap-6 lg:min-h-160 lg:grid-cols-[1fr_400px] lg:gap-8">
+        <div className="space-y-5">
+          <div className="h-72 animate-pulse rounded-3xl bg-white" />
+          <div className="h-56 animate-pulse rounded-3xl bg-white" />
+        </div>
+        <div className="h-80 animate-pulse rounded-3xl bg-white" />
+      </div>
+    );
+  }
 
   if (!items.length) {
     return (

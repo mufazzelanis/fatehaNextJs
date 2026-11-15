@@ -23,7 +23,7 @@ const tk = (n: number) => `${Number(n).toFixed(2)}৳`;
 export default function OrderSuccessPage({ searchParams }: PageProps<"/order/success">) {
   return (
     <div className="min-h-screen bg-[#f3f6f9] font-ui text-[#2d3748]">
-      <Suspense fallback={<main className="pb-10"><div className="mx-auto h-[640px] max-w-[575px] animate-pulse border-t-[3px] border-[#4a5bff] bg-white" /></main>}>
+      <Suspense fallback={<main className="pb-10"><div className="mx-auto h-160 max-w-143.75 animate-pulse border-t-[3px] border-[#4a5bff] bg-white" /></main>}>
         <OrderSummary searchParams={searchParams} />
       </Suspense>
     </div>
@@ -63,9 +63,9 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
   return (
     <>
       <main className="pb-10">
-        <div className="mx-auto max-w-[575px] border-t-[3px] border-[#4a5bff] bg-white px-5 pb-14 pt-9 shadow-[0_6px_0_-1px_#e3e6fb] sm:px-[42px]">
+        <div className="mx-auto max-w-143.75 border-t-[3px] border-[#4a5bff] bg-white px-5 pb-14 pt-9 shadow-[0_6px_0_-1px_#e3e6fb] sm:px-10.5">
           <h1 className="text-center font-display text-[30px] font-bold leading-[1.1] text-[#1c8a43] sm:text-[38px]">{c.thankyouTitle}</h1>
-          <p className="mx-auto mt-3 max-w-[440px] text-center font-display text-[17px] font-semibold leading-[1.15] text-[#2f4858] sm:text-[19px]">
+          <p className="mx-auto mt-3 max-w-110 text-center font-display text-[17px] font-semibold leading-[1.15] text-[#2f4858] sm:text-[19px]">
             {c.thankyouSubtitle}
           </p>
           {firePurchase && (
@@ -81,7 +81,7 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
 
           <ul className="mt-4 flex flex-wrap gap-y-3 bg-[#f3f6f9] px-6 py-5 text-[11px]">
             {meta.map(([label, value]) => (
-              <li key={label} className="border-r border-dashed border-[#cbd2d9] px-1.5 first:pl-0 last:pr-0.5 [&:not(:first-child)]:pl-2">
+              <li key={label} className="border-r border-dashed border-[#cbd2d9] px-1.5 first:pl-0 last:pr-0.5 not-first:pl-2">
                 <span className="block text-[#64748b]">{label}</span>
                 <strong className="mt-0.5 block font-semibold text-[#4a5568]">{value}</strong>
               </li>
@@ -92,7 +92,7 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
 
           <section className="mt-3 bg-[#f3f6f9] px-6 pb-4 pt-5">
             <h2 className="text-[15px] font-semibold text-[#1a202c]">Order details</h2>
-            <table className="mt-5 w-full max-w-[300px] text-[10.5px] text-[#4a5568]">
+            <table className="mt-5 w-full max-w-75 text-[10.5px] text-[#4a5568]">
               <thead>
                 <tr className="border-b border-dashed border-[#b8c0ca] text-left font-semibold text-[#2d3748]">
                   <th className="w-[60%] pb-1.5 font-semibold">Product</th>

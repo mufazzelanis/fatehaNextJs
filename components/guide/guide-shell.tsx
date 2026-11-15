@@ -6,6 +6,7 @@ import { LANDING_TAG } from "@/lib/data/landings";
 import { enabledGuides, GUIDE_HREF, prettyPhone, type GuideKey } from "@/lib/guides";
 import { getGuideContent } from "@/lib/data/guides";
 import { LandingFooter } from "@/components/landing/landing-footer";
+import { GuideImage } from "./guide-image";
 
 /** The live landing page for the product, so "অর্ডার করুন" always points somewhere real. */
 async function orderHref() {
@@ -120,7 +121,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
 }
 
 /** Page hero used by every guide. */
-export function GuideHero({ eyebrow, title, text, icon }: { eyebrow: string; title: string; text: ReactNode; icon: string }) {
+export function GuideHero({ eyebrow, title, text, icon, image }: { eyebrow: string; title: string; text: ReactNode; icon: string; image?: string }) {
   return (
     <section className="relative overflow-hidden bg-linear-to-b from-[#dff4e6] via-[#eef8f1] to-[#f4f8f5] px-4 pb-10 pt-10 sm:pt-14">
       <div className="pointer-events-none absolute -left-16 top-10 size-56 rounded-full bg-[#9fe0b8]/30 blur-3xl" />
@@ -130,6 +131,7 @@ export function GuideHero({ eyebrow, title, text, icon }: { eyebrow: string; tit
         <p className="mt-5 text-[16px] font-semibold text-[#2f9a6a]">{eyebrow}</p>
         <h1 className="mt-1 font-display text-[30px] font-extrabold leading-[1.25] text-[#123f2c] sm:text-[40px]">{title}</h1>
         <div className="mx-auto mt-4 max-w-2xl text-[18px] leading-[1.75] text-[#34503f]">{text}</div>
+        {image && <GuideImage src={image} alt={title} sizes="(min-width: 768px) 672px, calc(100vw - 32px)" priority className="mx-auto mt-7 max-w-2xl shadow-lg ring-1 ring-[#1d6b4a]/10" />}
       </div>
     </section>
   );

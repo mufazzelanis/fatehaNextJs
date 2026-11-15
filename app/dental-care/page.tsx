@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GuideHero, GuideShell } from "@/components/guide/guide-shell";
 import { getGuideContent } from "@/lib/data/guides";
+import { GuideImage } from "@/components/guide/guide-image";
 import { bnNum } from "@/lib/guides";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +26,7 @@ export default async function DentalCarePage() {
   const start = groups.map((_, gi) => groups.slice(0, gi).reduce((s, g) => s + g.tips.length, 0));
   return (
     <GuideShell current="care">
-      <GuideHero eyebrow={`${bnNum(total)}টি জরুরি পরামর্শ`} title={c.care.title} text={c.care.text} icon={c.pages.care.icon} />
+      <GuideHero eyebrow={`${bnNum(total)}টি জরুরি পরামর্শ`} title={c.care.title} text={c.care.text} icon={c.pages.care.icon} image={c.care.image} />
 
       {/* Topic shortcuts */}
       {groups.length > 1 && (
@@ -51,17 +52,19 @@ export default async function DentalCarePage() {
                 <span className={`grid size-12 place-items-center rounded-2xl bg-linear-to-br text-2xl text-white shadow-sm ${TONES[gi % TONES.length]}`} aria-hidden="true">{g.icon}</span>
                 {g.title}
               </h2>
+              {g.image && <GuideImage src={g.image} alt={g.title} sizes="(min-width: 1024px) 1024px, calc(100vw - 32px)" className="mt-4" />}
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {g.tips.map((t, ti) => {
                   const n = start[gi] + ti + 1;
                   return (
                     <article key={ti} id={`tip-${n}`} className="scroll-mt-32 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-[#1d6b4a]/10 sm:scroll-mt-36">
+                      {t.image && <GuideImage src={t.image} alt={t.title || `পরামর্শ ${bnNum(n)}`} sizes="(min-width: 768px) 460px, calc(100vw - 80px)" className="mb-5" />}
                       <div className="flex items-start gap-3.5">
                         <span className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-[#e8f3ec] text-3xl" aria-hidden="true">
                           {t.icon}
                           <span className="absolute -right-1.5 -top-1.5 grid min-w-6 place-items-center rounded-full bg-[#1d6b4a] px-1 text-[13px] font-bold text-white">{bnNum(n)}</span>
                         </span>
-                        <h3 className="pt-1 font-display text-[21px] font-bold leading-snug text-[#123f2c]">{t.title}</h3>
+                        {t.title && <h3 className="pt-1 font-display text-[21px] font-bold leading-snug text-[#123f2c]">{t.title}</h3>}
                       </div>
                       {t.steps ? (
                         <ol className="mt-4 space-y-2.5">

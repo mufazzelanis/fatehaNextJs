@@ -320,22 +320,23 @@ export const GUIDE_HREF: Record<GuideKey, "/how-to-use" | "/ingredients" | "/den
 };
 export type StepTone = "amber" | "indigo" | "emerald";
 export type GuidePageMeta = { enabled: boolean; label: string; short: string; icon: string; text: string };
-export type UsageStep = { step: string; title: string; icon: string; tone: StepTone; points: string[]; text: string };
+export type UsageStep = { step: string; title: string; icon: string; tone: StepTone; points: string[]; text: string; image: string };
 export type IngredientItem = {
   bn: string; en: string; sciLabel: string; sci: string; icon: string; intro: string; points: string[]; footnote: string;
-  noteKind: "" | "warning" | "info"; note: string;
+  noteKind: "" | "warning" | "info"; note: string; image: string;
 };
-export type CareTipItem = { title: string; icon: string; points: string[]; steps: boolean };
-export type CareGroupItem = { title: string; icon: string; tips: CareTipItem[] };
+export type CareTipItem = { title: string; icon: string; points: string[]; steps: boolean; image: string };
+export type CareGroupItem = { title: string; icon: string; tips: CareTipItem[]; image: string };
 
 export type GuideContent = {
   product: string;
   phones: string[];
   showOnThankYou: boolean;
   pages: Record<GuideKey, GuidePageMeta>;
-  usage: { title: string; intro: string; steps: UsageStep[]; notesTitle: string; notes: string[] };
-  ingredients: { title: string; subtitle: string; text: string[]; items: IngredientItem[]; closingTitle: string; closing: string[]; signature: string };
-  care: { title: string; text: string; groups: CareGroupItem[] };
+  // `image` everywhere is optional ("" = none): a built-in /guides/… picture or an uploaded file name.
+  usage: { title: string; intro: string; image: string; steps: UsageStep[]; notesTitle: string; notes: string[] };
+  ingredients: { title: string; subtitle: string; image: string; text: string[]; items: IngredientItem[]; closingTitle: string; closing: string[]; signature: string };
+  care: { title: string; text: string; image: string; groups: CareGroupItem[] };
 };
 
 const metaFor = (href: string): GuidePageMeta => {
@@ -343,29 +344,41 @@ const metaFor = (href: string): GuidePageMeta => {
   return { enabled: true, label: g.label, short: g.short, icon: g.icon, text: g.text };
 };
 
+/** Built-in pictures (public/guides, each also as -540.webp for phones). */
+const USAGE_IMAGES = ["/guides/usage-morning.webp", "/guides/usage-night.webp", "/guides/usage-special.webp"];
+const INGREDIENT_IMAGES: Record<string, string> = {
+  "মাশরুম": "mushroom", "লবঙ্গ": "clove", "এলাচ": "cardamom", "দারুচিনি": "cinnamon", "গোলমরিচ": "black-pepper",
+  "যষ্টিমধু": "licorice", "পিপুল": "long-pepper", "আদা": "ginger", "আমলকি": "amla",
+};
+const careImage = (n: number) => (n >= 1 && n <= 26 ? `/guides/care-${String(n).padStart(2, "0")}.webp` : "");
+
 export const DEFAULT_GUIDES: GuideContent = {
   product: GUIDE_PRODUCT,
   phones: [...GUIDE_PHONES],
   showOnThankYou: true,
   pages: { usage: metaFor("/how-to-use"), ingredients: metaFor("/ingredients"), care: metaFor("/dental-care") },
   usage: {
-    title: USAGE.title, intro: USAGE.intro, notesTitle: USAGE.notesTitle, notes: [...USAGE.notes],
-    steps: USAGE.steps.map((s) => ({
+    title: USAGE.title, intro: USAGE.intro, image: "/guides/usage-header.webp", notesTitle: USAGE.notesTitle, notes: [...USAGE.notes],
+    steps: USAGE.steps.map((s, i) => ({
       step: s.step, title: s.title, icon: s.icon, tone: s.tone,
-      points: "points" in s ? [...s.points] : [], text: "text" in s ? s.text : "",
+      points: "points" in s ? [...s.points] : [], text: "text" in s ? s.text : "", image: USAGE_IMAGES[i] ?? "",
     })),
   },
   ingredients: {
-    title: INGREDIENTS_INTRO.title, subtitle: INGREDIENTS_INTRO.subtitle, text: [...INGREDIENTS_INTRO.text],
+    title: INGREDIENTS_INTRO.title, subtitle: INGREDIENTS_INTRO.subtitle, image: "", text: [...INGREDIENTS_INTRO.text],
     closingTitle: INGREDIENTS_INTRO.closingTitle, closing: [...INGREDIENTS_INTRO.closing], signature: INGREDIENTS_INTRO.signature,
     items: INGREDIENTS.map((g) => ({
       bn: g.bn, en: g.en, sciLabel: g.sciLabel ?? "", sci: g.sci ?? "", icon: g.icon, intro: g.intro, points: [...g.points],
       footnote: g.footnote ?? "", noteKind: g.note?.kind ?? "", note: g.note?.text ?? "",
+      image: INGREDIENT_IMAGES[g.bn] ? `/guides/ing-${INGREDIENT_IMAGES[g.bn]}.webp` : "",
     })),
   },
   care: {
-    title: CARE_INTRO.title, text: CARE_INTRO.text,
-    groups: CARE_GROUPS.map((g) => ({ title: g.title, icon: g.icon, tips: g.tips.map((t) => ({ title: t.title, icon: t.icon, points: [...t.points], steps: !!t.steps })) })),
+    title: CARE_INTRO.title, text: CARE_INTRO.text, image: "",
+    groups: CARE_GROUPS.map((g) => ({
+      title: g.title, icon: g.icon, image: "",
+      tips: g.tips.map((t) => ({ title: t.title, icon: t.icon, points: [...t.points], steps: !!t.steps, image: careImage(t.n) })),
+    })),
   },
 };
 
@@ -376,6 +389,12 @@ const arr = (v: unknown, max: number) => (Array.isArray(v) ? v.slice(0, max) : [
 const lines = (v: unknown, max = 20, len = 500) =>
   (Array.isArray(v) ? v : typeof v === "string" ? v.split(/\r?\n/) : []).map((x) => str(x, "", len)).filter(Boolean).slice(0, max);
 const icon = (v: unknown, d: string) => str(v, d, 16) || d;
+/** A built-in picture (/guides/x.webp) or an uploaded file name; anything else is dropped. */
+const GUIDE_IMAGE = /^(?:\/guides\/[\w-]{1,80}\.webp|[\w.-]{1,120}\.(?:jpe?g|png|webp))$/i;
+const img = (v: unknown) => (typeof v === "string" && GUIDE_IMAGE.test(v) && !v.includes("..") ? v : "");
+/** Content saved before pictures existed has no `image` key: give it the matching built-in picture.
+ *  An explicit "" (the admin removed the picture) stays empty. */
+const imgOr = (v: unknown, fallback: string | undefined) => (v === undefined ? fallback ?? "" : img(v));
 
 export function normalizeGuides(raw: unknown): GuideContent {
   const r = o(raw);
@@ -395,7 +414,7 @@ export function normalizeGuides(raw: unknown): GuideContent {
 
   const u = o(r.usage);
   const usage = {
-    title: str(u.title, d.usage.title, 160) || d.usage.title, intro: str(u.intro, "", 600),
+    title: str(u.title, d.usage.title, 160) || d.usage.title, intro: str(u.intro, "", 600), image: imgOr(u.image, d.usage.image),
     notesTitle: str(u.notesTitle, d.usage.notesTitle, 120), notes: lines(u.notes),
     steps: arr(u.steps, 12).map((x) => {
       const s = o(x);
@@ -403,13 +422,14 @@ export function normalizeGuides(raw: unknown): GuideContent {
         step: str(s.step, "", 30), title: str(s.title, "", 120), icon: icon(s.icon, "✅"),
         tone: (["amber", "indigo", "emerald"].includes(s.tone as string) ? s.tone : "emerald") as StepTone,
         points: lines(s.points), text: str(s.text, "", 1500),
+        image: imgOr(s.image, d.usage.steps.find((x) => x.title === s.title)?.image),
       };
-    }).filter((s) => s.title),
+    }).filter((s) => s.title || s.image || s.text || s.points.length), // every field is optional — a picture alone is fine
   };
 
   const ing = o(r.ingredients);
   const ingredients = {
-    title: str(ing.title, d.ingredients.title, 160) || d.ingredients.title, subtitle: str(ing.subtitle, "", 120),
+    title: str(ing.title, d.ingredients.title, 160) || d.ingredients.title, subtitle: str(ing.subtitle, "", 120), image: imgOr(ing.image, d.ingredients.image),
     text: lines(ing.text, 6, 1000), closingTitle: str(ing.closingTitle, "", 160), closing: lines(ing.closing, 6, 1000),
     signature: str(ing.signature, "", 200),
     items: arr(ing.items, 40).map((x) => {
@@ -418,23 +438,25 @@ export function normalizeGuides(raw: unknown): GuideContent {
         bn: str(g.bn, "", 80), en: str(g.en, "", 80), sciLabel: str(g.sciLabel, "", 60), sci: str(g.sci, "", 80), icon: icon(g.icon, "🌿"),
         intro: str(g.intro, "", 1000), points: lines(g.points), footnote: str(g.footnote, "", 600),
         noteKind: (g.noteKind === "warning" || g.noteKind === "info" ? g.noteKind : "") as IngredientItem["noteKind"], note: str(g.note, "", 1500),
+        image: imgOr(g.image, d.ingredients.items.find((x) => x.bn === g.bn)?.image),
       };
-    }).filter((g) => g.bn),
+    }).filter((g) => g.bn || g.en || g.image || g.intro || g.points.length),
   };
 
   const c = o(r.care);
   const care = {
-    title: str(c.title, d.care.title, 160) || d.care.title, text: str(c.text, "", 600),
+    title: str(c.title, d.care.title, 160) || d.care.title, text: str(c.text, "", 600), image: imgOr(c.image, d.care.image),
     groups: arr(c.groups, 12).map((x) => {
       const g = o(x);
       return {
-        title: str(g.title, "", 80), icon: icon(g.icon, "🦷"),
+        title: str(g.title, "", 80), icon: icon(g.icon, "🦷"), image: imgOr(g.image, ""),
         tips: arr(g.tips, 40).map((y) => {
           const t = o(y);
-          return { title: str(t.title, "", 160), icon: icon(t.icon, "✅"), points: lines(t.points, 20, 600), steps: t.steps === true };
-        }).filter((t) => t.title),
+          return { title: str(t.title, "", 160), icon: icon(t.icon, "✅"), points: lines(t.points, 20, 600), steps: t.steps === true,
+            image: imgOr(t.image, d.care.groups.flatMap((x) => x.tips).find((x) => x.title === t.title)?.image) };
+        }).filter((t) => t.title || t.image || t.points.length),
       };
-    }).filter((g) => g.title),
+    }).filter((g) => g.title || g.image || g.tips.length),
   };
 
   return {
@@ -453,4 +475,14 @@ export function enabledGuides(c: GuideContent) {
 /** URL slug ↔ page key (Admin → Pages → /admin/pages/<slug>). */
 export function guideKeyFromSlug(slug: string): GuideKey | null {
   return GUIDE_KEYS.find((k) => GUIDE_HREF[k] === `/${slug}`) ?? null;
+}
+
+/** <img> attributes for a guide picture: built-in ones have a 540px copy for phones, uploads go through /media resizing. */
+export function guideImage(src: string, sizes: string) {
+  if (src.startsWith("/guides/")) {
+    const small = src.replace(/\.webp$/, "-540.webp");
+    return { src, srcSet: `${small} 540w, ${src} 1080w`, sizes };
+  }
+  const url = `/media/${src}`;
+  return { src: `${url}?w=640`, srcSet: [384, 640, 828].map((w) => `${url}?w=${w} ${w}w`).join(", "), sizes };
 }

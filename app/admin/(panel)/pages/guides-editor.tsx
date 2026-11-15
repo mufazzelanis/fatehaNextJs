@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { resetGuides, saveGuides } from "@/app/actions/guides";
+import { uploadLandingImage } from "@/app/actions/landings";
 import { initialState } from "@/lib/action-state";
 import {
   DEFAULT_GUIDES, GUIDE_HREF, GUIDE_KEYS, type CareGroupItem, type CareTipItem, type GuideContent, type GuideKey,
@@ -55,10 +56,62 @@ function AddButton({ onClick, children }: { onClick: () => void; children: React
   return <button type="button" onClick={onClick} className="w-full rounded-xl border-2 border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-600 transition hover:border-brand-500 hover:text-brand-700">+ {children}</button>;
 }
 
-const blankStep = (n: number): UsageStep => ({ step: `ধাপ ${n}`, title: "", icon: "✅", tone: "emerald", points: [], text: "" });
-const blankIngredient = (): IngredientItem => ({ bn: "", en: "", sciLabel: "বৈজ্ঞানিক নাম", sci: "", icon: "🌿", intro: "", points: [], footnote: "", noteKind: "", note: "" });
-const blankTip = (): CareTipItem => ({ title: "", icon: "✅", points: [], steps: false });
-const blankGroup = (): CareGroupItem => ({ title: "", icon: "🦷", tips: [blankTip()] });
+const blankStep = (n: number): UsageStep => ({ step: `ধাপ ${n}`, title: "", icon: "✅", tone: "emerald", points: [], text: "", image: "" });
+const blankIngredient = (): IngredientItem => ({ bn: "", en: "", sciLabel: "বৈজ্ঞানিক নাম", sci: "", icon: "🌿", intro: "", points: [], footnote: "", noteKind: "", note: "", image: "" });
+const blankTip = (): CareTipItem => ({ title: "", icon: "✅", points: [], steps: false, image: "" });
+const blankGroup = (): CareGroupItem => ({ title: "", icon: "🦷", tips: [blankTip()], image: "" });
+
+/** Preview URL of a guide picture (built-in /guides/… or an uploaded file). */
+const previewUrl = (v: string) => (v.startsWith("/guides/") ? v.replace(/\.webp$/, "-540.webp") : `/media/${v}?w=384`);
+
+/**
+ * Optional picture for any part of a page: upload (button or drag & drop), replace, remove.
+ * Everything on a page is optional — an item can be a picture only, text only, or both.
+ */
+function ImageInput({ value, onChange, label = "Image (optional)", wide }: { value: string; onChange: (v: string) => void; label?: string; wide?: boolean }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState("");
+  const [over, setOver] = useState(false);
+  const upload = (file: File | undefined) => {
+    if (!file) return;
+    setError("");
+    start(async () => {
+      const fd = new FormData();
+      fd.set("image", file);
+      const r = await uploadLandingImage(fd);
+      if (r.file) onChange(r.file);
+      else setError(r.error ?? "Upload failed");
+      if (input.current) input.current.value = "";
+    });
+  };
+  const box = wide ? "h-20 w-36" : "size-20";
+  return (
+    <div>
+      <span className="a-label">{label}</span>
+      <div onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); upload(e.dataTransfer.files[0]); }}
+        className={`flex items-center gap-3 rounded-xl border-2 border-dashed p-2 transition ${over ? "border-brand-500 bg-brand-50" : "border-slate-200"}`}>
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewUrl(value)} alt="" className={`shrink-0 rounded-lg object-cover ring-1 ring-slate-200 ${box}`} />
+        ) : (
+          <span className={`grid shrink-0 place-items-center rounded-lg bg-slate-50 text-2xl text-slate-300 ${box}`}>🖼</span>
+        )}
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={pending} onClick={() => input.current?.click()} className="a-btn-outline py-1.5 text-sm">
+              {pending ? "Uploading…" : value ? "Replace" : "Upload image"}
+            </button>
+            {value && <button type="button" onClick={() => onChange("")} className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50">Remove</button>}
+          </div>
+          <p className="text-xs text-slate-400">{error ? <span className="text-rose-600">{error}</span> : "JPG / PNG / WEBP up to 3MB — or drop a file here. Phones get a small, fast copy."}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Editor for the content pages. With `only`, it edits one page (Admin → Pages → <page>) or the shared
@@ -151,6 +204,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
           <section className="a-card grid gap-4 p-5 md:grid-cols-2">
             <Text label="Page heading" value={usage.title} onChange={(v) => up("usage", { ...usage, title: v })} />
             <Area label="Intro" value={usage.intro} onChange={(v) => up("usage", { ...usage, intro: v })} rows={2} />
+            <div className="md:col-span-2"><ImageInput wide label="Header image (optional)" value={usage.image} onChange={(v) => up("usage", { ...usage, image: v })} /></div>
           </section>
           {usage.steps.map((s, i) => {
             const set = (patch: Partial<UsageStep>) => up("usage", { ...usage, steps: usage.steps.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
@@ -170,6 +224,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
                     </select>
                   </Field>
                 </div>
+                <ImageInput value={s.image} onChange={(v) => set({ image: v })} />
                 <Lines label="Points" value={s.points} onChange={(v) => set({ points: v })} />
                 <Area label="Paragraph (optional)" value={s.text} onChange={(v) => set({ text: v })} hint="Shown in a highlighted box above the points." rows={2} />
               </section>
@@ -189,14 +244,15 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
             <Text label="Page heading" value={ing.title} onChange={(v) => up("ingredients", { ...ing, title: v })} />
             <Text label="Small line above the heading" value={ing.subtitle} onChange={(v) => up("ingredients", { ...ing, subtitle: v })} />
             <div className="md:col-span-2"><Lines label="Intro paragraphs" value={ing.text} onChange={(v) => up("ingredients", { ...ing, text: v })} hint="One paragraph per line" /></div>
+            <div className="md:col-span-2"><ImageInput wide label="Header image (optional)" value={ing.image} onChange={(v) => up("ingredients", { ...ing, image: v })} /></div>
           </section>
-          <p className="text-sm text-slate-500">{ing.items.length} ingredients — numbered in this order on the page.</p>
+          <p className="text-sm text-slate-500">{ing.items.length} ingredients — numbered in this order on the page. Every field is optional: an item can be just a picture, just text, or both.</p>
           {ing.items.map((g, i) => {
             const set = (patch: Partial<IngredientItem>) => up("ingredients", { ...ing, items: ing.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
             return (
               <section key={i} className={`a-card space-y-4 p-5 ${g.noteKind === "warning" ? "ring-2 ring-rose-200" : ""}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-medium text-slate-900"><span className="mr-1.5">{g.icon}</span>{i + 1}. {g.bn || "New ingredient"} {g.en && <span className="font-normal text-slate-500">({g.en})</span>}</h2>
+                  <h2 className="font-medium text-slate-900"><span className="mr-1.5">{g.icon}</span>{i + 1}. {g.bn || (g.image ? "Image" : "New ingredient")} {g.en && <span className="font-normal text-slate-500">({g.en})</span>}</h2>
                   <ItemTools list={ing.items} i={i} set={(l) => up("ingredients", { ...ing, items: l })} label={g.bn || `ingredient ${i + 1}`} />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[5rem_1fr_1fr]">
@@ -208,6 +264,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
                   <Text label="Label" value={g.sciLabel} onChange={(v) => set({ sciLabel: v })} placeholder="বৈজ্ঞানিক নাম" />
                   <Text label="Scientific name" value={g.sci} onChange={(v) => set({ sci: v })} hint="Leave empty to hide the line" />
                 </div>
+                <ImageInput value={g.image} onChange={(v) => set({ image: v })} />
                 <Area label="Introduction" value={g.intro} onChange={(v) => set({ intro: v })} rows={2} />
                 <Lines label="Features (উপাদান পরিচিতি)" value={g.points} onChange={(v) => set({ points: v })} />
                 <Area label="Extra line (optional)" value={g.footnote} onChange={(v) => set({ footnote: v })} rows={1} />
@@ -236,6 +293,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
           <section className="a-card grid gap-4 p-5 md:grid-cols-2">
             <Text label="Page heading" value={care.title} onChange={(v) => up("care", { ...care, title: v })} />
             <Area label="Intro" value={care.text} onChange={(v) => up("care", { ...care, text: v })} rows={2} />
+            <div className="md:col-span-2"><ImageInput wide label="Header image (optional)" value={care.image} onChange={(v) => up("care", { ...care, image: v })} /></div>
           </section>
           <p className="text-sm text-slate-500">{care.groups.length} topics · {tips} tips — tips are numbered 1–{tips} in this order on the page.</p>
           {care.groups.map((g, gi) => {
@@ -250,19 +308,21 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
                   <Icon value={g.icon} onChange={(v) => setGroup({ icon: v })} />
                   <Text label="Topic name" value={g.title} onChange={(v) => setGroup({ title: v })} />
                 </div>
+                <ImageInput wide label="Topic banner image (optional)" value={g.image} onChange={(v) => setGroup({ image: v })} />
                 <div className="space-y-3 border-l-2 border-slate-100 pl-4">
                   {g.tips.map((t, ti) => {
                     const setTip = (patch: Partial<CareTipItem>) => setGroup({ tips: g.tips.map((x, j) => (j === ti ? { ...x, ...patch } : x)) });
                     return (
                       <div key={ti} className="space-y-3 rounded-xl bg-slate-50 p-4">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-slate-800">{t.icon} {t.title || "New tip"}</p>
+                          <p className="flex items-center gap-2 text-sm font-medium text-slate-800">{t.image && <span title="Has an image">🖼</span>}{t.icon} {t.title || (t.image ? "Image tip" : "New tip")}</p>
                           <ItemTools list={g.tips} i={ti} set={(l) => setGroup({ tips: l })} label={t.title || `tip ${ti + 1}`} />
                         </div>
                         <div className="grid gap-3 sm:grid-cols-[5rem_1fr]">
                           <Icon value={t.icon} onChange={(v) => setTip({ icon: v })} />
                           <Text label="Tip title" value={t.title} onChange={(v) => setTip({ title: v })} />
                         </div>
+                        <ImageInput value={t.image} onChange={(v) => setTip({ image: v })} />
                         <Lines label="Points" value={t.points} onChange={(v) => setTip({ points: v })} />
                         <label className="flex items-center gap-2 text-sm text-slate-700">
                           <input type="checkbox" checked={t.steps} onChange={(e) => setTip({ steps: e.target.checked })} className="size-4 accent-brand-700" />

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GuideHero, GuideShell } from "@/components/guide/guide-shell";
 import { getGuideContent } from "@/lib/data/guides";
+import { GuideImage } from "@/components/guide/guide-image";
 import { bnNum } from "@/lib/guides";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,13 +22,13 @@ export default async function IngredientsPage() {
   const g = c.ingredients;
   return (
     <GuideShell current="ingredients">
-      <GuideHero eyebrow={g.subtitle} title={g.title} icon={c.pages.ingredients.icon}
+      <GuideHero eyebrow={g.subtitle} title={g.title} icon={c.pages.ingredients.icon} image={g.image}
         text={g.text.map((t) => <p key={t} className="mt-2 first:mt-0">{t}</p>)} />
 
       {/* Quick index */}
       <nav aria-label="উপাদানের তালিকা" className="px-4 pb-6">
         <ul className="mx-auto flex max-w-5xl flex-wrap justify-center gap-2">
-          {g.items.map((it, i) => (
+          {g.items.map((it, i) => it.bn && (
             <li key={i}>
               <a href={`#ingredient-${i + 1}`} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-[15px] font-semibold text-[#1d6b4a] shadow-sm ring-1 ring-[#1d6b4a]/10 transition hover:bg-[#e8f3ec]">
                 <span aria-hidden="true">{it.icon}</span>{it.bn}
@@ -42,14 +43,15 @@ export default async function IngredientsPage() {
           {g.items.map((it, i) => (
             <article key={i} id={`ingredient-${i + 1}`}
               className={`scroll-mt-24 rounded-3xl bg-white p-6 shadow-sm ring-1 ${it.noteKind === "warning" ? "ring-2 ring-rose-200" : "ring-[#1d6b4a]/10"}`}>
-              <div className="flex items-start gap-4">
+              {it.image && <GuideImage src={it.image} alt={it.bn || it.en} sizes="(min-width: 768px) 460px, calc(100vw - 80px)" className="mb-5" />}
+              {(it.bn || it.en) && <div className="flex items-start gap-4">
                 <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#e8f3ec] to-[#d2ecdc] text-4xl" aria-hidden="true">{it.icon}</span>
                 <div className="min-w-0">
                   <p className="text-[14px] font-bold tracking-wider text-[#2f9a6a]">উপাদান {no(i)}</p>
                   <h2 className="font-display text-[24px] font-bold leading-tight text-[#123f2c]">{it.bn}</h2>
                   {it.en && <p className="text-[16px] font-semibold text-[#4b6356]">{it.en}</p>}
                 </div>
-              </div>
+              </div>}
               {it.sci && (
                 <p className="mt-4 rounded-xl bg-[#f4f8f5] px-4 py-2.5 text-[16px] text-[#34503f]">
                   {it.sciLabel || "বৈজ্ঞানিক নাম"}: <i className="font-semibold text-[#123f2c]">{it.sci}</i>

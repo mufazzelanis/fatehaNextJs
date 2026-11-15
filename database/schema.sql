@@ -400,3 +400,18 @@ CREATE TABLE IF NOT EXISTS page_views (
   views  INT UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (path, day)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Customer feedback from the /thank-you page (stars + message; name / phone optional)
+CREATE TABLE IF NOT EXISTS page_feedback (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  page        VARCHAR(40)  NOT NULL DEFAULT 'thanks',
+  rating      TINYINT UNSIGNED NOT NULL,
+  message     TEXT         NULL,
+  name        VARCHAR(80)  NULL,
+  phone       VARCHAR(20)  NULL,
+  ip          VARCHAR(64)  NULL,
+  user_agent  VARCHAR(300) NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_feedback_page (page, created_at),
+  INDEX idx_feedback_ip (ip, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

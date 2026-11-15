@@ -6,13 +6,13 @@ import { uploadLandingImage } from "@/app/actions/landings";
 import { initialState } from "@/lib/action-state";
 import {
   DEFAULT_GUIDES, GUIDE_HREF, GUIDE_KEYS, type CareGroupItem, type CareTipItem, type GuideContent, type GuideKey,
-  type IngredientItem, type StepTone, type UsageStep,
+  type IngredientItem, type StepTone, type ThanksButton, type ThanksContent, type ThanksSection, type UsageStep,
 } from "@/lib/guides";
 import { FormAlert, SubmitButton } from "@/components/form-bits";
 
 type Tab = "general" | GuideKey;
 const TABS: { id: Tab; label: string }[] = [
-  { id: "general", label: "General" }, { id: "usage", label: "🪥 ব্যবহারবিধি" }, { id: "ingredients", label: "🌿 উপাদান" }, { id: "care", label: "🦷 যত্ন গাইড" },
+  { id: "general", label: "General" }, { id: "usage", label: "🪥 ব্যবহারবিধি" }, { id: "ingredients", label: "🌿 উপাদান" }, { id: "care", label: "🦷 যত্ন গাইড" }, { id: "thanks", label: "💚 ধন্যবাদ" },
 ];
 
 // ── small inputs
@@ -68,7 +68,14 @@ const previewUrl = (v: string) => (v.startsWith("/guides/") ? v.replace(/\.webp$
  * Optional picture for any part of a page: upload (button or drag & drop), replace, remove.
  * Everything on a page is optional — an item can be a picture only, text only, or both.
  */
-function ImageInput({ value, onChange, label = "Image (optional)", wide }: { value: string; onChange: (v: string) => void; label?: string; wide?: boolean }) {
+/** Recommended upload sizes. Pictures are never cropped on the page, so other shapes work too — these just look best. */
+const SIZE = {
+  header: "1080 × 1080 px (square) — or 1200 × 675 px (wide)",
+  item: "1080 × 1080 px (square)",
+  banner: "1600 × 600 px (wide banner)",
+} as const;
+
+function ImageInput({ value, onChange, label = "Image (optional)", wide, size = SIZE.item }: { value: string; onChange: (v: string) => void; label?: string; wide?: boolean; size?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
@@ -106,7 +113,10 @@ function ImageInput({ value, onChange, label = "Image (optional)", wide }: { val
             </button>
             {value && <button type="button" onClick={() => onChange("")} className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50">Remove</button>}
           </div>
-          <p className="text-xs text-slate-400">{error ? <span className="text-rose-600">{error}</span> : "JPG / PNG / WEBP up to 3MB — or drop a file here. Phones get a small, fast copy."}</p>
+          <p className="text-xs">
+            <span className="mr-1.5 inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 font-semibold text-sky-800 ring-1 ring-sky-200">📐 Best size: {size}</span>
+          </p>
+          <p className="text-xs text-slate-400">{error ? <span className="text-rose-600">{error}</span> : "JPG / PNG / WEBP, up to 3MB — or drop a file here. Phones get a small, fast copy automatically."}</p>
         </div>
       </div>
     </div>
@@ -204,7 +214,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
           <section className="a-card grid gap-4 p-5 md:grid-cols-2">
             <Text label="Page heading" value={usage.title} onChange={(v) => up("usage", { ...usage, title: v })} />
             <Area label="Intro" value={usage.intro} onChange={(v) => up("usage", { ...usage, intro: v })} rows={2} />
-            <div className="md:col-span-2"><ImageInput wide label="Header image (optional)" value={usage.image} onChange={(v) => up("usage", { ...usage, image: v })} /></div>
+            <div className="md:col-span-2"><ImageInput wide size={SIZE.header} label="Header image (optional)" value={usage.image} onChange={(v) => up("usage", { ...usage, image: v })} /></div>
           </section>
           {usage.steps.map((s, i) => {
             const set = (patch: Partial<UsageStep>) => up("usage", { ...usage, steps: usage.steps.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
@@ -244,7 +254,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
             <Text label="Page heading" value={ing.title} onChange={(v) => up("ingredients", { ...ing, title: v })} />
             <Text label="Small line above the heading" value={ing.subtitle} onChange={(v) => up("ingredients", { ...ing, subtitle: v })} />
             <div className="md:col-span-2"><Lines label="Intro paragraphs" value={ing.text} onChange={(v) => up("ingredients", { ...ing, text: v })} hint="One paragraph per line" /></div>
-            <div className="md:col-span-2"><ImageInput wide label="Header image (optional)" value={ing.image} onChange={(v) => up("ingredients", { ...ing, image: v })} /></div>
+            <div className="md:col-span-2"><ImageInput wide size={SIZE.header} label="Header image (optional)" value={ing.image} onChange={(v) => up("ingredients", { ...ing, image: v })} /></div>
           </section>
           <p className="text-sm text-slate-500">{ing.items.length} ingredients — numbered in this order on the page. Every field is optional: an item can be just a picture, just text, or both.</p>
           {ing.items.map((g, i) => {
@@ -288,12 +298,14 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
         </div>
       )}
 
+      {tab === "thanks" && <ThanksEditor t={c.thanks} set={(v) => up("thanks", v)} />}
+
       {tab === "care" && (
         <div className="space-y-5">
           <section className="a-card grid gap-4 p-5 md:grid-cols-2">
             <Text label="Page heading" value={care.title} onChange={(v) => up("care", { ...care, title: v })} />
             <Area label="Intro" value={care.text} onChange={(v) => up("care", { ...care, text: v })} rows={2} />
-            <div className="md:col-span-2"><ImageInput wide label="Header image (optional)" value={care.image} onChange={(v) => up("care", { ...care, image: v })} /></div>
+            <div className="md:col-span-2"><ImageInput wide size={SIZE.header} label="Header image (optional)" value={care.image} onChange={(v) => up("care", { ...care, image: v })} /></div>
           </section>
           <p className="text-sm text-slate-500">{care.groups.length} topics · {tips} tips — tips are numbered 1–{tips} in this order on the page.</p>
           {care.groups.map((g, gi) => {
@@ -308,7 +320,7 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
                   <Icon value={g.icon} onChange={(v) => setGroup({ icon: v })} />
                   <Text label="Topic name" value={g.title} onChange={(v) => setGroup({ title: v })} />
                 </div>
-                <ImageInput wide label="Topic banner image (optional)" value={g.image} onChange={(v) => setGroup({ image: v })} />
+                <ImageInput wide size={SIZE.banner} label="Topic banner image (optional)" value={g.image} onChange={(v) => setGroup({ image: v })} />
                 <div className="space-y-3 border-l-2 border-slate-100 pl-4">
                   {g.tips.map((t, ti) => {
                     const setTip = (patch: Partial<CareTipItem>) => setGroup({ tips: g.tips.map((x, j) => (j === ti ? { ...x, ...patch } : x)) });
@@ -380,5 +392,108 @@ function PageMeta({ k, c, up }: { k: GuideKey; c: GuideContent; up: <K extends k
       </div>
       <Text label="One-line description (cards on the other pages and the thank-you page)" value={p.text} onChange={(v) => set({ text: v })} />
     </section>
+  );
+}
+
+const blankSection = (): ThanksSection => ({ title: "", text: "", image: "", buttons: [] });
+const blankButton = (): ThanksButton => ({ icon: "👉", label: "", text: "", href: "/" });
+
+/** Editor for the customer thank-you page (/thank-you). Every field is optional. */
+function ThanksEditor({ t, set }: { t: ThanksContent; set: (v: ThanksContent) => void }) {
+  const up = <K extends keyof ThanksContent>(k: K, v: ThanksContent[K]) => set({ ...t, [k]: v });
+  return (
+    <div className="space-y-5">
+      <section className="a-card grid gap-4 p-5 md:grid-cols-2">
+        <h2 className="font-medium text-slate-900 md:col-span-2">Top of the page</h2>
+        <Text label="Big title" value={t.title} onChange={(v) => up("title", v)} placeholder="ধন্যবাদ!" />
+        <Text label="Line under the title" value={t.subtitle} onChange={(v) => up("subtitle", v)} />
+        <div className="md:col-span-2"><Area label="Text" value={t.text} onChange={(v) => up("text", v)} rows={2} /></div>
+        <div className="md:col-span-2"><ImageInput wide size={SIZE.header} label="Top image (optional)" value={t.image} onChange={(v) => up("image", v)} /></div>
+      </section>
+
+      <p className="text-sm text-slate-500">Sections — picture and text side by side on computers, one under the other on phones. Each can have buttons that link to other pages.</p>
+      {t.sections.map((sc, i) => {
+        const setSc = (patch: Partial<ThanksSection>) => up("sections", t.sections.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+        return (
+          <section key={i} className="a-card space-y-4 p-5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-medium text-slate-900">Section {i + 1}{sc.title ? ` — ${sc.title}` : ""}</h2>
+              <ItemTools list={t.sections} i={i} set={(l) => up("sections", l)} label={sc.title || `section ${i + 1}`} />
+            </div>
+            <Text label="Heading" value={sc.title} onChange={(v) => setSc({ title: v })} />
+            <Area label="Text" value={sc.text} onChange={(v) => setSc({ text: v })} rows={2} />
+            <ImageInput value={sc.image} onChange={(v) => setSc({ image: v })} />
+            <div className="space-y-3 border-l-2 border-slate-100 pl-4">
+              <span className="a-label">Buttons</span>
+              {sc.buttons.map((b, bi) => {
+                const setB = (patch: Partial<ThanksButton>) => setSc({ buttons: sc.buttons.map((x, j) => (j === bi ? { ...x, ...patch } : x)) });
+                return (
+                  <div key={bi} className="space-y-3 rounded-xl bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-800">{b.icon} {b.label || "New button"}</p>
+                      <ItemTools list={sc.buttons} i={bi} set={(l) => setSc({ buttons: l })} label={b.label || `button ${bi + 1}`} />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-[5rem_1fr_1fr]">
+                      <Icon value={b.icon} onChange={(v) => setB({ icon: v })} />
+                      <Text label="Button text" value={b.label} onChange={(v) => setB({ label: v })} />
+                      <Text label="Link" value={b.href} onChange={(v) => setB({ href: v })} mono placeholder="/how-to-use"
+                        hint="A page here (/how-to-use, /dental-care, /ingredients), an https:// link, or tel:01XXXXXXXXX" />
+                    </div>
+                    <Text label="Small line under the button (optional)" value={b.text} onChange={(v) => setB({ text: v })} />
+                  </div>
+                );
+              })}
+              {sc.buttons.length < 6 && <AddButton onClick={() => setSc({ buttons: [...sc.buttons, blankButton()] })}>Add a button</AddButton>}
+            </div>
+          </section>
+        );
+      })}
+      <AddButton onClick={() => up("sections", [...t.sections, blankSection()])}>Add a section</AddButton>
+
+      <section className="a-card space-y-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-medium text-slate-900">Customer feedback</h2>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" checked={t.feedbackOn} onChange={(e) => up("feedbackOn", e.target.checked)} className="size-4 accent-brand-700" />
+            Show the feedback form (stars + message)
+          </label>
+        </div>
+        {t.feedbackOn && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Text label="Heading" value={t.feedbackTitle} onChange={(v) => up("feedbackTitle", v)} />
+            <Text label="Send button" value={t.feedbackButton} onChange={(v) => up("feedbackButton", v)} />
+            <div className="md:col-span-2"><Area label="Text" value={t.feedbackText} onChange={(v) => up("feedbackText", v)} rows={2} /></div>
+            <p className="text-xs text-slate-500 md:col-span-2">Feedback that customers send shows up in the <b>Feedback</b> tab of this page.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="a-card space-y-4 p-5">
+        <h2 className="font-medium text-slate-900">Stay with us (social links)</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Text label="Heading" value={t.followTitle} onChange={(v) => up("followTitle", v)} />
+          <Area label="Text" value={t.followText} onChange={(v) => up("followText", v)} rows={2} />
+        </div>
+        {t.links.map((l, i) => {
+          const setL = (patch: Partial<typeof l>) => up("links", t.links.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+          return (
+            <div key={i} className="grid items-end gap-3 sm:grid-cols-[1fr_2fr_auto]">
+              <Text label="Name" value={l.label} onChange={(v) => setL({ label: v })} placeholder="Facebook" />
+              <Text label="Link" value={l.url} onChange={(v) => setL({ url: v })} mono placeholder="https://facebook.com/fatehabd" />
+              <ItemTools list={t.links} i={i} set={(v) => up("links", v)} label={l.label || `link ${i + 1}`} />
+            </div>
+          );
+        })}
+        {t.links.length < 8 && <AddButton onClick={() => up("links", [...t.links, { label: "", url: "https://" }])}>Add a link (Facebook, YouTube, WhatsApp…)</AddButton>}
+        {t.links.length === 0 && <p className="text-xs text-slate-500">No links yet — the page shows WhatsApp and Call buttons for the first expert number until you add some.</p>}
+      </section>
+
+      <section className="a-card grid gap-4 p-5 md:grid-cols-3">
+        <h2 className="font-medium text-slate-900 md:col-span-3">Closing lines</h2>
+        <Text label="Line 1" value={t.closingTitle} onChange={(v) => up("closingTitle", v)} />
+        <Text label="Name" value={t.closingName} onChange={(v) => up("closingName", v)} />
+        <Text label="Line 3" value={t.closingText} onChange={(v) => up("closingText", v)} />
+      </section>
+    </div>
   );
 }

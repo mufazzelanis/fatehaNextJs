@@ -115,7 +115,7 @@ export function Color({ label, value, onChange }: { label: string; value: string
 }
 
 /** Uploads pictures one by one through the server action; returns the stored file names. */
-function ImageUpload({ multiple, onUploaded, label }: { multiple: boolean; onUploaded: (files: string[]) => void; label: string }) {
+function ImageUpload({ multiple, onUploaded, label, size }: { multiple: boolean; onUploaded: (files: string[]) => void; label: string; size: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
@@ -142,6 +142,7 @@ function ImageUpload({ multiple, onUploaded, label }: { multiple: boolean; onUpl
         <PlusIcon className="size-4" /> {pending ? "Uploading…" : label}
       </button>
       {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
+      <p className="mt-1.5 text-xs"><span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 font-semibold text-sky-800 ring-1 ring-sky-200">📐 Best size: {size}</span></p>
       <p className="mt-1 text-xs text-slate-400">JPG, PNG or WEBP, up to 3MB each. Phones get a small, fast copy automatically.</p>
     </div>
   );
@@ -200,7 +201,7 @@ export function BlockFields({ block: b, onChange }: { block: Block; onChange: (b
               ))}
             </div>
           )}
-          {b.images.length < 12 && <ImageUpload multiple label="Upload photos" onUploaded={(files) => set("images", [...b.images, ...files].slice(0, 12))} />}
+          {b.images.length < 12 && <ImageUpload multiple size="1080 px wide (any height) — e.g. 1080 × 1080 square or 1080 × 1350 tall" label="Upload photos" onUploaded={(files) => set("images", [...b.images, ...files].slice(0, 12))} />}
         </div>
       )}
 
@@ -229,7 +230,7 @@ export function BlockFields({ block: b, onChange }: { block: Block; onChange: (b
                 <div>
                   {r.image
                     ? <Thumb file={r.image} onRemove={() => setReview(i, { image: "" })} />
-                    : <ImageUpload multiple={false} label="Screenshot" onUploaded={([f]) => setReview(i, { image: f })} />}
+                    : <ImageUpload multiple={false} size="phone screenshot (e.g. 1080 × 1920)" label="Screenshot" onUploaded={([f]) => setReview(i, { image: f })} />}
                 </div>
               </div>
             </div>

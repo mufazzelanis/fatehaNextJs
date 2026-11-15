@@ -89,7 +89,7 @@ export function LandingSetupForm({ landing: l, products, defaultFooter }: {
               </p>
             )}
             <div>
-              <span className="a-label">Label banner (wide image at the top, approx. 1060×300)</span>
+              <span className="a-label">Label banner (wide image at the top) — 📐 best size 1060 × 300 px (or 2120 × 600 for extra sharp)</span>
               <div className="overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={banner ?? l.bannerUrl} alt="" className="h-auto w-full" />

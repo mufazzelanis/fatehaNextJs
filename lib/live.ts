@@ -60,7 +60,7 @@ export const MAIN_SITE_LABEL = "Main website";
 /** First path segments that belong to the main website. Anything else with one segment is a landing page. */
 const MAIN_SITE_ROOTS = new Set([
   "", "cart", "categories", "checkout", "contact", "faq", "products", "shop", "wishlist", "track",
-  "how-to-use", "ingredients", "dental-care", "privacy-policy", "refund-policy", "terms-of-service", "order",
+  "how-to-use", "ingredients", "dental-care", "thank-you", "privacy-policy", "refund-policy", "terms-of-service", "order",
 ]);
 
 /** Is this a public main-website page (tracked as landing 0)? The landing thank-you page (?l=slug) belongs to its landing. */

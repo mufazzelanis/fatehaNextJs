@@ -10,6 +10,7 @@ const GUIDE_LIST = [
   { href: "/how-to-use", label: "ব্যবহারবিধি", short: "ব্যবহারবিধি", icon: "🪥", text: "সকাল, রাত ও বিশেষ ব্যবহারের সঠিক নিয়ম" },
   { href: "/ingredients", label: "উপাদান পরিচিতি", short: "উপাদান", icon: "🌿", text: "১৪টি প্রাকৃতিক উপাদানের পরিচয় ও বৈশিষ্ট্য" },
   { href: "/dental-care", label: "দাঁতের যত্ন গাইড", short: "যত্ন গাইড", icon: "🦷", text: "সুস্থ দাঁত ও মাড়ির জন্য ২৬টি জরুরি পরামর্শ" },
+  { href: "/thank-you", label: "ধন্যবাদ", short: "ধন্যবাদ", icon: "💚", text: "পণ্য হাতে পাওয়ার পর — ব্যবহারের গাইড, মতামত ও যোগাযোগ" },
 ] as const;
 
 // ───────────── ব্যবহারবিধি
@@ -313,10 +314,24 @@ export const bnNum = (n: number) => String(n).replace(/\d/g, (d) => "০১২�
 
 // ───────────── editable content (admin → Guide Pages)
 
-export const GUIDE_KEYS = ["usage", "ingredients", "care"] as const;
+export const GUIDE_KEYS = ["usage", "ingredients", "care", "thanks"] as const;
 export type GuideKey = (typeof GUIDE_KEYS)[number];
-export const GUIDE_HREF: Record<GuideKey, "/how-to-use" | "/ingredients" | "/dental-care"> = {
-  usage: "/how-to-use", ingredients: "/ingredients", care: "/dental-care",
+export const GUIDE_HREF: Record<GuideKey, "/how-to-use" | "/ingredients" | "/dental-care" | "/thank-you"> = {
+  usage: "/how-to-use", ingredients: "/ingredients", care: "/dental-care", thanks: "/thank-you",
+};
+/** Pages shown in the guide tabs, "আরও জানুন" cards and the order thank-you cards (not the customer thank-you page itself). */
+const GUIDE_TAB_KEYS: GuideKey[] = ["usage", "ingredients", "care"];
+
+// ── Thank-you page for customers who have received the product (QR code / link in the parcel)
+export type ThanksButton = { icon: string; label: string; text: string; href: string };
+export type ThanksSection = { title: string; text: string; image: string; buttons: ThanksButton[] };
+export type ThanksLink = { label: string; url: string };
+export type ThanksContent = {
+  title: string; subtitle: string; text: string; image: string;
+  sections: ThanksSection[];
+  feedbackOn: boolean; feedbackTitle: string; feedbackText: string; feedbackButton: string;
+  followTitle: string; followText: string; links: ThanksLink[];
+  closingTitle: string; closingName: string; closingText: string;
 };
 export type StepTone = "amber" | "indigo" | "emerald";
 export type GuidePageMeta = { enabled: boolean; label: string; short: string; icon: string; text: string };
@@ -337,6 +352,7 @@ export type GuideContent = {
   usage: { title: string; intro: string; image: string; steps: UsageStep[]; notesTitle: string; notes: string[] };
   ingredients: { title: string; subtitle: string; image: string; text: string[]; items: IngredientItem[]; closingTitle: string; closing: string[]; signature: string };
   care: { title: string; text: string; image: string; groups: CareGroupItem[] };
+  thanks: ThanksContent;
 };
 
 const metaFor = (href: string): GuidePageMeta => {
@@ -356,7 +372,35 @@ export const DEFAULT_GUIDES: GuideContent = {
   product: GUIDE_PRODUCT,
   phones: [...GUIDE_PHONES],
   showOnThankYou: true,
-  pages: { usage: metaFor("/how-to-use"), ingredients: metaFor("/ingredients"), care: metaFor("/dental-care") },
+  pages: { usage: metaFor("/how-to-use"), ingredients: metaFor("/ingredients"), care: metaFor("/dental-care"), thanks: metaFor("/thank-you") },
+  thanks: {
+    title: "ধন্যবাদ!", subtitle: "আপনার আস্থার জন্য কৃতজ্ঞতা",
+    text: "Fateha BD-এর সঙ্গে থাকার জন্য আপনাকে আন্তরিক ধন্যবাদ। আপনার হাতে আমাদের পণ্য পৌঁছেছে, এটাই আমাদের আনন্দ।",
+    image: "/guides/thanks-1.webp",
+    sections: [
+      {
+        title: "আপনার যত্নের যাত্রা শুরু হোক আজ থেকেই",
+        text: "মাশরুম ডেন্টোকেয়ার প্লাস কেনার জন্য ধন্যবাদ। পণ্যটি ব্যবহারের আগে এর নির্দেশনা ভালোভাবে পড়ে নিন।",
+        image: "/guides/thanks-2.webp", buttons: [],
+      },
+      {
+        title: "মাশরুম ডেন্টোকেয়ার প্লাস",
+        text: "পণ্যের ব্যবহারবিধি, সংরক্ষণ পদ্ধতি এবং প্রয়োজনীয় সতর্কতা জেনে নিন।",
+        image: "/guides/thanks-3.webp",
+        buttons: [
+          { icon: "🪥", label: "সঠিক ব্যবহারের নিয়ম জানুন", text: "ধাপে ধাপে পণ্য ব্যবহারের নির্দেশনা দেখতে আমাদের গাইডটি পড়ুন।", href: "/how-to-use" },
+          { icon: "🦷", label: "প্রতিদিনের Oral Care Tips", text: "সুস্থ দাঁত ও মাড়ির জন্য প্রতিদিনের জরুরি পরামর্শ।", href: "/dental-care" },
+        ],
+      },
+    ],
+    feedbackOn: true, feedbackTitle: "আপনার মতামত দিন",
+    feedbackText: "মাশরুম ডেন্টোকেয়ার প্লাস ব্যবহারের অভিজ্ঞতা আমাদের সঙ্গে শেয়ার করুন। আপনার মতামত আমাদের সেবার মান উন্নত করতে সাহায্য করবে।",
+    feedbackButton: "মতামত পাঠান",
+    followTitle: "Fateha BD-এর সঙ্গে থাকুন",
+    followText: "দাঁতের যত্ন, Oral Hygiene এবং দৈনন্দিন স্বাস্থ্য সচেতনতামূলক তথ্য পেতে আমাদের সঙ্গে যুক্ত থাকুন।",
+    links: [],
+    closingTitle: "Thank You for Being With Us", closingName: "Fateha BD", closingText: "আপনার আস্থা, আমাদের অনুপ্রেরণা।",
+  },
   usage: {
     title: USAGE.title, intro: USAGE.intro, image: "/guides/usage-header.webp", notesTitle: USAGE.notesTitle, notes: [...USAGE.notes],
     steps: USAGE.steps.map((s, i) => ({
@@ -463,13 +507,47 @@ export function normalizeGuides(raw: unknown): GuideContent {
     product: str(r.product, d.product, 80) || d.product,
     phones: phones.length ? phones : [],
     showOnThankYou: r.showOnThankYou === undefined ? true : r.showOnThankYou === true,
-    pages, usage, ingredients, care,
+    pages, usage, ingredients, care, thanks: normalizeThanks(r.thanks, d.thanks),
   };
 }
 
 /** Enabled guide pages, in menu order (nav tabs, thank-you cards, sitemap). */
 export function enabledGuides(c: GuideContent) {
+  return GUIDE_TAB_KEYS.filter((k) => c.pages[k].enabled).map((k) => ({ key: k, href: GUIDE_HREF[k], ...c.pages[k] }));
+}
+
+/** Every enabled page incl. the customer thank-you page (sitemap). */
+export function enabledPages(c: GuideContent) {
   return GUIDE_KEYS.filter((k) => c.pages[k].enabled).map((k) => ({ key: k, href: GUIDE_HREF[k], ...c.pages[k] }));
+}
+
+/** A button / link target: a page on this site, an https link, a phone number or WhatsApp. */
+const LINK = /^(?:\/[\w\-/.#?=&%]*|https:\/\/[^\s"<>]{3,400}|tel:\+?\d{6,15})$/;
+export const safeLink = (v: unknown) => (typeof v === "string" && LINK.test(v.trim()) ? v.trim() : "");
+
+function normalizeThanks(raw: unknown, d: ThanksContent): ThanksContent {
+  const t = o(raw);
+  if (!Object.keys(t).length) return d;
+  return {
+    title: str(t.title, d.title, 160), subtitle: str(t.subtitle, "", 160), text: str(t.text, "", 1500), image: imgOr(t.image, d.image),
+    sections: arr(t.sections, 12).map((x) => {
+      const sc = o(x);
+      return {
+        title: str(sc.title, "", 160), text: str(sc.text, "", 2000),
+        image: imgOr(sc.image, d.sections.find((ds) => ds.title === sc.title)?.image),
+        buttons: arr(sc.buttons, 6).map((y) => {
+          const b = o(y);
+          return { icon: icon(b.icon, "👉"), label: str(b.label, "", 80), text: str(b.text, "", 200), href: safeLink(b.href) };
+        }).filter((b) => b.label && b.href),
+      };
+    }).filter((sc) => sc.title || sc.text || sc.image || sc.buttons.length),
+    feedbackOn: t.feedbackOn === undefined ? d.feedbackOn : t.feedbackOn === true,
+    feedbackTitle: str(t.feedbackTitle, d.feedbackTitle, 120), feedbackText: str(t.feedbackText, "", 800),
+    feedbackButton: str(t.feedbackButton, d.feedbackButton, 40) || d.feedbackButton,
+    followTitle: str(t.followTitle, "", 120), followText: str(t.followText, "", 800),
+    links: arr(t.links, 8).map((y) => { const l = o(y); return { label: str(l.label, "", 40), url: safeLink(l.url) }; }).filter((l) => l.label && l.url),
+    closingTitle: str(t.closingTitle, "", 120), closingName: str(t.closingName, "", 80), closingText: str(t.closingText, "", 200),
+  };
 }
 
 /** URL slug ↔ page key (Admin → Pages → /admin/pages/<slug>). */

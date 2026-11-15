@@ -35,19 +35,26 @@ export async function getLiveStats(): Promise<LiveStats> {
   const byId = new Map(landings.map((l) => [l.id, l]));
   byId.set(MAIN_SITE_ID, { id: MAIN_SITE_ID, name: MAIN_SITE_LABEL, slug: "" });
   // Where the visitor is: the landing slug, or for the main website the page path ("products/x", "" = home).
-  const placeOf = (r: VisitRow) => (r.landing_id === MAIN_SITE_ID ? (r.page ?? "/").slice(1) : byId.get(r.landing_id)?.slug ?? "?");
+  // Landing visits on their thank-you page show as "slug → order/success".
+  const placeOf = (r: VisitRow) => {
+    if (r.landing_id === MAIN_SITE_ID) return (r.page ?? "/").slice(1);
+    const slug = byId.get(r.landing_id)?.slug ?? "?";
+    return r.page && r.page !== `/${slug}` ? `${slug} → ${r.page.slice(1)}` : slug;
+  };
 
   const here = rows.filter(isHere);
   const sections = zero(LIVE_SECTIONS);
   const sources = zero(LIVE_SOURCES);
   const devices = zero(LIVE_DEVICES);
-  const perLanding = new Map<number, { count: number; form: number }>();
+  const perLanding = new Map<number, { count: number; form: number; pages: Map<string, number> }>();
   for (const r of here) {
     sections[r.section] = (sections[r.section] ?? 0) + 1;
     sources[r.source] = (sources[r.source] ?? 0) + 1;
     devices[r.device] = (devices[r.device] ?? 0) + 1;
-    const p = perLanding.get(r.landing_id) ?? { count: 0, form: 0 };
+    const p = perLanding.get(r.landing_id) ?? { count: 0, form: 0, pages: new Map<string, number>() };
     p.count++;
+    const pg = r.page ?? (r.landing_id === MAIN_SITE_ID ? "/" : `/${byId.get(r.landing_id)?.slug ?? ""}`);
+    p.pages.set(pg, (p.pages.get(pg) ?? 0) + 1);
     if (r.section === "form") p.form++;
     perLanding.set(r.landing_id, p);
   }
@@ -98,7 +105,10 @@ export async function getLiveStats(): Promise<LiveStats> {
     now: new Date(now).toISOString(),
     total: here.length,
     landings: [...perLanding.entries()]
-      .map(([id, v]) => ({ id, name: byId.get(id)?.name ?? `#${id}`, slug: byId.get(id)?.slug ?? "", ...v }))
+      .map(([id, v]) => ({
+        id, name: byId.get(id)?.name ?? `#${id}`, slug: byId.get(id)?.slug ?? "", count: v.count, form: v.form,
+        pages: [...v.pages.entries()].map(([page, count]) => ({ page, count })).sort((a, b) => b.count - a.count).slice(0, 8),
+      }))
       .sort((a, b) => b.count - a.count),
     sections, sources, devices, arrived5, left5,
     today: Number(today?.n ?? 0),

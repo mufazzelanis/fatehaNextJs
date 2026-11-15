@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getOrderByNo, zoneLabel } from "@/lib/data/orders";
 import { placedHere } from "@/lib/order-receipt";
+import { LandingVisitTracker } from "@/components/landing/landing-visit-tracker";
 import { getLandingById, getLandingSettings } from "@/lib/data/landings";
 import { DEFAULT_CONTENT } from "@/lib/content";
 import { isWithinHours } from "@/lib/format";
@@ -68,6 +69,8 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
           <p className="mx-auto mt-3 max-w-110 text-center font-display text-[17px] font-semibold leading-[1.15] text-[#2f4858] sm:text-[19px]">
             {c.thankyouSubtitle}
           </p>
+          {/* live visitors: this page counts as part of the landing visit */}
+          {order.landing_id ? <LandingVisitTracker landingId={order.landing_id} /> : null}
           {firePurchase && (
             <PurchaseEvent order={{
               orderNo: order.order_no,

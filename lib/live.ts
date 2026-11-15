@@ -27,7 +27,8 @@ export type LiveStats = {
   /** Server time the numbers were taken (ISO). */
   now: string;
   total: number;
-  landings: { id: number; name: string; slug: string; count: number; form: number }[];
+  /** Each landing (and the main website, id 0) with the pages people are on right now. */
+  landings: { id: number; name: string; slug: string; count: number; form: number; pages: { page: string; count: number }[] }[];
   sections: Record<LiveSection, number>;
   sources: Record<LiveSource, number>;
   devices: Record<LiveDevice, number>;
@@ -61,6 +62,7 @@ export const MAIN_SITE_LABEL = "Main website";
 const MAIN_SITE_ROOTS = new Set([
   "", "cart", "categories", "checkout", "contact", "faq", "products", "shop", "wishlist", "track",
   "how-to-use", "ingredients", "dental-care", "thank-you", "privacy-policy", "refund-policy", "terms-of-service", "order",
+  "account", "business", // customer & dealer pages (login, register, my orders, dealer area)
 ]);
 
 /** Is this a public main-website page (tracked as landing 0)? The landing thank-you page (?l=slug) belongs to its landing. */

@@ -153,7 +153,7 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
           </div>
 
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/50">Landing pages</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/50">Where they are</p>
             {data.landings.length === 0 ? (
               <p className="text-sm text-white/50">No one on the website right now.</p>
             ) : (
@@ -164,7 +164,12 @@ export function LiveVisitors({ initial }: { initial: LiveStats }) {
                       <Link href={l.id ? `/admin/landings/${l.id}` : "/admin/live-visitors?landing=-1"} className="min-w-0 truncate font-medium hover:underline">{l.name}</Link>
                       <span className="shrink-0 tabular-nums"><b>{l.count}</b>{l.form ? <span className="ml-1.5 text-xs text-amber-200">· {l.form} on form</span> : null}</span>
                     </div>
-                    <p className="font-mono text-[11px] text-white/45">/{l.slug}</p>
+                    {/* which page(s) right now — e.g. Main website: / ·2, /products/x ·1 */}
+                    <p className="flex flex-wrap gap-x-2 font-mono text-[11px] text-white/45">
+                      {(l.pages.length ? l.pages : [{ page: `/${l.slug}`, count: l.count }]).map((p) => (
+                        <span key={p.page} className="max-w-full truncate">{p.page === "/order/success" ? "✓ thank-you" : p.page}{l.pages.length > 1 ? <span className="text-white/70"> ·{p.count}</span> : null}</span>
+                      ))}
+                    </p>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400 transition-all duration-700" style={{ width: `${Math.round((l.count / Math.max(data.total, 1)) * 100)}%` }} /></div>
                   </li>
                 ))}

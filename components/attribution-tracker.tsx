@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { FIRST_KEY, LAST_KEY, UTM_KEYS, type Touch } from "@/lib/attribution";
+import { AD_KEYS, FIRST_KEY, LAST_KEY, UTM_KEYS, type Touch } from "@/lib/attribution";
 
 const FIRST_TTL = 90 * 86_400_000; // a first visit older than 90 days is replaced
 
@@ -26,9 +26,10 @@ function arrival(): Touch | null {
   const tagged = UTM_KEYS.some((k) => q.get(k)) || q.has("fbclid") || q.has("gclid");
   if (!external && !tagged) return null;
   const t: Touch = { url: `${location.origin}${location.pathname}`, source: external ? ref : "(direct)", at: Date.now() };
-  for (const k of UTM_KEYS) {
+  for (const k of [...UTM_KEYS, ...AD_KEYS]) {
     const v = q.get(k);
-    if (v) t[k] = v.slice(0, 200);
+    // Facebook leaves "{{adset.name}}" untouched where it can't fill it in — skip those.
+    if (v && !/^\{\{.*\}\}$/.test(v)) t[k] = v.slice(0, 200);
   }
   if (q.has("fbclid")) t.fbclid = true;
   if (q.has("gclid")) t.gclid = true;

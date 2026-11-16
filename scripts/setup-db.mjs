@@ -151,5 +151,31 @@ if (ls?.value) {
   } catch {}
 }
 
+// Older orders: ad set / ad (utm_content / utm_term) from the attribution already saved with them, and any
+// Facebook names in it (campaign_name / adset_name / ad_name). Same "which visit" rule as lib/attribution.ts.
+try {
+  const [rows] = await conn.query(
+    "SELECT id, attribution FROM orders WHERE attribution IS NOT NULL AND utm_content IS NULL AND utm_term IS NULL ORDER BY id DESC LIMIT 20000",
+  );
+  let filled = 0;
+  for (const r of rows) {
+    let a;
+    try { a = JSON.parse(r.attribution); } catch { continue; }
+    const t = a?.last?.utm_campaign || a?.last?.utm_source ? a.last : a?.first;
+    if (!t || (!t.utm_content && !t.utm_term)) continue;
+    await conn.query("UPDATE orders SET utm_content = ?, utm_term = ? WHERE id = ?",
+      [String(t.utm_content ?? "").slice(0, 200) || null, String(t.utm_term ?? "").slice(0, 200) || null, r.id]);
+    for (const [kind, id, name] of [["campaign", t.utm_campaign, t.campaign_name], ["adset", t.utm_content, t.adset_name], ["ad", t.utm_term, t.ad_name]]) {
+      if (id && name && !/^\{\{/.test(name)) {
+        await conn.query("INSERT IGNORE INTO ad_labels (kind, ext_id, name, source) VALUES (?, ?, ?, 'auto')", [kind, String(id).slice(0, 200), String(name).slice(0, 200)]);
+      }
+    }
+    filled++;
+  }
+  if (filled) console.log(`✔ Ad set / ad filled in on ${filled} older order(s)`);
+} catch (e) {
+  console.warn("! Could not fill ad set / ad on older orders:", e.message);
+}
+
 await conn.end();
 console.log("\nAll done. Run `npm run dev` and open http://localhost:3000");

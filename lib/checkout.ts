@@ -214,7 +214,12 @@ export function readCheckoutTiming(formData: FormData) {
 /** Order attribution sent by <CheckoutTimer> → columns for the orders table (JSON + the source / campaign used in filters). */
 export function readOrderAttribution(formData: FormData) {
   const a = parseAttribution(formData.get("attr"));
-  if (!a) return { json: null, source: null, campaign: null };
+  if (!a) return { json: null, source: null, campaign: null, content: null, term: null, names: null, facebook: false };
   const h = headline(a);
-  return { json: JSON.stringify(a), source: h.source.slice(0, 120) || null, campaign: h.campaign.slice(0, 200) || null };
+  return {
+    json: JSON.stringify(a), source: h.source.slice(0, 120) || null, campaign: h.campaign.slice(0, 200) || null,
+    content: h.content.slice(0, 200) || null, term: h.term.slice(0, 200) || null,
+    names: { campaign: [h.campaign, h.names.campaign], adset: [h.content, h.names.adset], ad: [h.term, h.names.ad] } as Record<"campaign" | "adset" | "ad", [string, string]>,
+    facebook: h.facebook,
+  };
 }

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { can, requirePermission } from "@/lib/auth";
 import { campaignStats, listOrders, statusCounts, timeSlotCounts, TIME_SLOTS, zoneLabel } from "@/lib/data/orders";
 import { listLandingOptions } from "@/lib/data/landings";
+import { adNames } from "@/lib/data/ads";
 import { isPaymentMethod, PAYMENT_LABEL, PAYMENT_METHODS, PAYMENT_STATUS_META, type PaymentStatus } from "@/lib/payments";
 import { ORDER_STATUSES, STATUS_META } from "@/lib/format";
 import { PageHeader, Pagination, PanelSkeleton, EmptyState } from "@/components/admin/ui";
@@ -32,28 +33,37 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
     page: Number(str(sp.page)) || 1,
     perPage: Number(str(sp.per)) || 20,
     payment: str(sp.payment),
-    source: /^ld+$/.test(str(sp.source)) ? "" : str(sp.source),
-    landing: Number(str(sp.landing)) || (/^ld+$/.test(str(sp.source)) ? Number(str(sp.source).slice(1)) : 0),
+    source: /^l\d+$/.test(str(sp.source)) ? "" : str(sp.source),
+    landing: Number(str(sp.landing)) || (/^l\d+$/.test(str(sp.source)) ? Number(str(sp.source).slice(1)) : 0),
     method: str(sp.method),
     time: TIME_SLOTS.some((t) => t.id === str(sp.time)) ? str(sp.time) : "",
     campaign: str(sp.campaign).slice(0, 200),
+    adset: str(sp.adset).slice(0, 200),
+    ad: str(sp.ad).slice(0, 200),
   };
   const [result, counts, landings, slotCounts, campaigns] = await Promise.all([listOrders(filters), statusCounts(), listLandingOptions(), timeSlotCounts(filters), campaignStats()]);
   const activeCampaign = campaigns.find((c) => c.campaign === filters.campaign);
+  // Friendly names for ad IDs (learned from the ad link or typed in Ad Performance).
+  const names = await adNames([
+    ...campaigns.map((c) => ({ kind: "campaign" as const, id: c.campaign })),
+    ...result.rows.map((o) => ({ kind: "campaign" as const, id: o.utm_campaign })),
+    { kind: "adset" as const, id: filters.adset }, { kind: "ad" as const, id: filters.ad },
+  ]);
+  const nameOf = (kind: "campaign" | "adset" | "ad", id: string | null | undefined) => (id ? names.get(`${kind}:${id}`) ?? "" : "");
   const landingName = (id: number | null) => landings.find((l) => l.id === id)?.name ?? null;
 
   const qs = (over: Record<string, string | number>) => {
     const p = new URLSearchParams();
     const merged = {
       status: filters.status, q: filters.q, from: filters.from, to: filters.to, per: filters.perPage === 20 ? "" : String(filters.perPage),
-      payment: filters.payment, source: filters.source, landing: filters.landing ? String(filters.landing) : "", method: filters.method, time: filters.time, campaign: filters.campaign, ...over,
+      payment: filters.payment, source: filters.source, landing: filters.landing ? String(filters.landing) : "", method: filters.method, time: filters.time, campaign: filters.campaign, adset: filters.adset, ad: filters.ad, ...over,
     };
     for (const [k, v] of Object.entries(merged)) if (v && !(k === "status" && v === "all") && !(k === "page" && String(v) === "1")) p.set(k, String(v));
     const s = p.toString();
     return s ? `?${s}` : "";
   };
   const exportQs = qs({ page: 1 });
-  const hasFilters = filters.q || filters.from || filters.to || filters.payment || filters.source || filters.landing || filters.method || filters.time || filters.campaign;
+  const hasFilters = filters.q || filters.from || filters.to || filters.payment || filters.source || filters.landing || filters.method || filters.time || filters.campaign || filters.adset || filters.ad;
 
   return (
     <>
@@ -104,7 +114,7 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
           </select>
           <select name="campaign" defaultValue={filters.campaign} className="a-input" aria-label="Ad campaign">
             <option value="">All campaigns</option>
-            {campaigns.map((c) => <option key={c.campaign} value={c.campaign}>{c.campaign} · {c.orders} order{c.orders === 1 ? "" : "s"}</option>)}
+            {campaigns.map((c) => <option key={c.campaign} value={c.campaign}>{nameOf("campaign", c.campaign) ? `${nameOf("campaign", c.campaign)} (${c.campaign})` : c.campaign} · {c.orders} order{c.orders === 1 ? "" : "s"}</option>)}
             {filters.campaign && !activeCampaign && <option value={filters.campaign}>{filters.campaign}</option>}
           </select>
         </div>
@@ -138,11 +148,21 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
         </div>
       </form>
 
+      {(filters.adset || filters.ad) && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Showing orders from</span>
+          {filters.adset && <Link href={`/admin/orders${qs({ adset: "", page: 1 })}`} className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 ring-1 ring-blue-600/15 hover:bg-blue-100" title="Remove this filter">Ad set: {nameOf("adset", filters.adset) || <span className="font-mono">{filters.adset}</span>} ✕</Link>}
+          {filters.ad && <Link href={`/admin/orders${qs({ ad: "", page: 1 })}`} className="rounded-full bg-violet-50 px-3 py-1 font-medium text-violet-800 ring-1 ring-violet-600/15 hover:bg-violet-100" title="Remove this filter">Ad: {nameOf("ad", filters.ad) || <span className="font-mono">{filters.ad}</span>} ✕</Link>}
+          <Link href="/admin/ads" className="ml-auto text-brand-700 hover:underline">Ad Performance →</Link>
+        </div>
+      )}
+
       {activeCampaign && (
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-2xl bg-linear-to-r from-brand-900 to-brand-700 p-4 text-white shadow-sm sm:grid-cols-5 sm:items-center">
           <div className="col-span-2 min-w-0 sm:col-span-1">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Campaign · last 90 days</p>
-            <p className="truncate font-mono text-sm font-semibold" title={activeCampaign.campaign}>{activeCampaign.campaign}</p>
+            {nameOf("campaign", activeCampaign.campaign) && <p className="truncate text-sm font-semibold">{nameOf("campaign", activeCampaign.campaign)}</p>}
+            <p className={`truncate font-mono ${nameOf("campaign", activeCampaign.campaign) ? "text-xs text-white/70" : "text-sm font-semibold"}`} title={activeCampaign.campaign}>{activeCampaign.campaign}</p>
             {activeCampaign.source && <p className="text-xs text-white/70">source: {activeCampaign.source}</p>}
           </div>
           {[
@@ -167,7 +187,7 @@ async function Orders({ searchParams }: Pick<PageProps<"/admin/orders">, "search
             id: o.id, order_no: o.order_no, customer_name: o.customer_name, phone: o.phone, address: o.address,
             total: Number(o.total), status: o.status, zone: zoneLabel(o), items: Number(o.item_count),
             origin: o.source === "store" ? "Shop" : landingName(o.landing_id) ?? "Landing",
-            campaign: o.utm_campaign, utmSource: o.utm_source,
+            campaign: o.utm_campaign, campaignName: nameOf("campaign", o.utm_campaign), utmSource: o.utm_source,
             created_at: new Date(o.created_at).toISOString(), note: o.note,
             pay: isPaymentMethod(o.payment_method) && o.payment_method !== "cod" ? {
               method: PAYMENT_LABEL[o.payment_method], status: o.payment_status,

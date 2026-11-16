@@ -5,6 +5,22 @@
 export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
 export type UtmKey = (typeof UTM_KEYS)[number];
 
+/**
+ * Extra ad details Facebook can add to the link (Ads Manager → URL parameters), e.g.
+ * campaign_name={{campaign.name}}&adset_name={{adset.name}}&ad_name={{ad.name}}&placement={{placement}}&site_source_name={{site_source_name}}
+ */
+export const AD_KEYS = ["campaign_name", "adset_name", "ad_name", "placement", "site_source_name"] as const;
+export type AdKey = (typeof AD_KEYS)[number];
+
+/** The URL parameters to paste into Facebook Ads Manager (ad → Tracking → URL parameters). */
+export const FB_URL_PARAMS =
+  "utm_source=fb&utm_medium=paid&utm_campaign={{campaign.id}}&utm_content={{adset.id}}&utm_term={{ad.id}}" +
+  "&campaign_name={{campaign.name}}&adset_name={{adset.name}}&ad_name={{ad.name}}&placement={{placement}}&site_source_name={{site_source_name}}";
+
+/** Is this visit from a Facebook / Instagram ad? (then utm_campaign / content / term are campaign / ad set / ad IDs) */
+export const isFacebookTouch = (t: Pick<Touch, "utm_source" | "fbclid"> | null | undefined) =>
+  !!t && (/^(fb|facebook|ig|instagram|meta|an|msg)/i.test(t.utm_source ?? "") || !!t.fbclid);
+
 export type Touch = {
   /** First page of that visit (no query string). */
   url: string;
@@ -12,7 +28,7 @@ export type Touch = {
   source: string;
   /** Unix ms. */
   at: number;
-} & Partial<Record<UtmKey, string>> & { fbclid?: boolean; gclid?: boolean };
+} & Partial<Record<UtmKey, string>> & Partial<Record<AdKey, string>> & { fbclid?: boolean; gclid?: boolean };
 
 export type Attribution = {
   first: Touch | null;
@@ -38,6 +54,10 @@ function cleanTouch(raw: unknown): Touch | null {
   }
   const t: Touch = { url, source: s(r.source, 120) || "(direct)", at: Number.isFinite(Number(r.at)) ? Number(r.at) : 0 };
   for (const k of UTM_KEYS) {
+    const v = s(r[k], 200);
+    if (v) t[k] = v;
+  }
+  for (const k of AD_KEYS) {
     const v = s(r[k], 200);
     if (v) t[k] = v;
   }
@@ -72,5 +92,12 @@ export function headline(a: Attribution | null) {
   return {
     source: t?.utm_source || (t?.source && t.source !== "(direct)" ? t.source : "") || (t ? "(direct)" : ""),
     campaign: t?.utm_campaign || "",
+    /** Facebook: ad set ID; other ads: the ad / content tag. */
+    content: t?.utm_content || "",
+    /** Facebook: ad ID; Google: the keyword. */
+    term: t?.utm_term || "",
+    /** Names Facebook put in the link (if the URL parameters include them). */
+    names: { campaign: t?.campaign_name || "", adset: t?.adset_name || "", ad: t?.ad_name || "" },
+    facebook: isFacebookTouch(t),
   };
 }

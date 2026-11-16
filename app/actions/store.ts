@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { rememberOrder } from "@/lib/order-receipt";
+import { learnAdNames } from "@/lib/data/ads";
 import { after } from "next/server";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { execute, queryOne, transaction } from "@/lib/db";
@@ -132,14 +133,14 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
       const [res] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_label, shipping_charge, subtotal, total,
            payment_method, payment_status, payment_sender, payment_trx, source,
-           ip_address, user_agent, fbp, fbc, event_source_url, page_seconds, checkout_seconds, attribution, utm_source, utm_campaign)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           ip_address, user_agent, fbp, fbc, event_source_url, page_seconds, checkout_seconds, attribution, utm_source, utm_campaign, utm_content, utm_term)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'store', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [customer?.id ?? null, values.name, phone, values.address, values.note.slice(0, 1000) || null,
          inside ? "inside" : "outside", inside ? "Inside Dhaka" : "Outside Dhaka", shipping, subtotal, subtotal + shipping,
          method, method === "cod" ? "unpaid" : "pending_verification", sender, trx,
          clientIpFrom(h), h.get("user-agent")?.slice(0, 300) ?? null,
          jar.get("_fbp")?.value?.slice(0, 255) ?? null, jar.get("_fbc")?.value?.slice(0, 255) ?? null, h.get("referer")?.slice(0, 500) ?? null,
-         timing.page, timing.checkout, attr.json, attr.source, attr.campaign],
+         timing.page, timing.checkout, attr.json, attr.source, attr.campaign, attr.content, attr.term],
       );
       const orderId = res.insertId;
       const no = `FB${10000 + orderId}`;
@@ -157,6 +158,7 @@ export async function placeStoreOrder(_prev: ActionState, formData: FormData): P
       ]);
       return { no, orderId, count: lines.reduce((s, l) => s + l.qty, 0), total: subtotal + shipping };
     });
+    after(() => learnAdNames(attr.names));
   } catch (error) {
     if (error instanceof CheckoutError) return { error: error.message, values };
     console.error("placeStoreOrder failed", error);

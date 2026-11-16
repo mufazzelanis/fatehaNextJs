@@ -415,3 +415,19 @@ CREATE TABLE IF NOT EXISTS page_feedback (
   INDEX idx_feedback_page (page, created_at),
   INDEX idx_feedback_ip (ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ad set and ad of the visit that led to the order (Facebook: utm_content = ad set ID, utm_term = ad ID)
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS utm_content VARCHAR(200) NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS utm_term VARCHAR(200) NULL;
+ALTER TABLE orders ADD INDEX IF NOT EXISTS idx_orders_adset (utm_content, created_at);
+ALTER TABLE orders ADD INDEX IF NOT EXISTS idx_orders_ad (utm_term, created_at);
+
+-- Friendly names for ad IDs: learned from the link (campaign_name / adset_name / ad_name) or typed in Admin → Ad Performance
+CREATE TABLE IF NOT EXISTS ad_labels (
+  kind        VARCHAR(10)  NOT NULL,
+  ext_id      VARCHAR(200) NOT NULL,
+  name        VARCHAR(200) NOT NULL,
+  source      VARCHAR(10)  NOT NULL DEFAULT 'auto',
+  updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (kind, ext_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

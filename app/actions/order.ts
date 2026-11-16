@@ -6,6 +6,7 @@ import { getMarketingConfig } from "@/lib/meta/config";
 import { sendPurchaseForOrder } from "@/lib/meta/capi";
 import { redirect } from "next/navigation";
 import { rememberOrder } from "@/lib/order-receipt";
+import { learnAdNames } from "@/lib/data/ads";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { execute, queryOne, transaction } from "@/lib/db";
 import { getCustomer } from "@/lib/auth";
@@ -125,11 +126,11 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
       const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_charge,
                              subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, shipping_label, custom_fields, source, landing_id,
-                             page_seconds, checkout_seconds, attribution, utm_source, utm_campaign)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?)`,
+                             page_seconds, checkout_seconds, attribution, utm_source, utm_campaign, utm_content, utm_term)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?, ?, ?)`,
         [customer?.id ?? null, values.name, phone, values.address, values.note.slice(0, 1000) || null,
          zone.id, shipping, subtotal, subtotal + shipping, ip, userAgent, fbp, fbc, sourceUrl,
-         zone.label, customFields.length ? JSON.stringify(customFields) : null, landing.id, timing.page, timing.checkout, attr.json, attr.source, attr.campaign],
+         zone.label, customFields.length ? JSON.stringify(customFields) : null, landing.id, timing.page, timing.checkout, attr.json, attr.source, attr.campaign, attr.content, attr.term],
       );
       const orderId = result.insertId;
       const no = `${landing.order_prefix || "DC"}${10000 + orderId}`;
@@ -147,6 +148,8 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
       ]);
       return { no, orderId };
     });
+    // Names Facebook put in the ad link → Ad Performance shows "Dentocare Nov Sale" instead of only the ID.
+    after(() => learnAdNames(attr.names));
   } catch (error) {
     if (error instanceof OrderError) return { error: error.message, values };
     console.error("placeOrder failed", error);

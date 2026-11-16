@@ -15,6 +15,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", short: "Home", icon: GridIcon, exact: true, group: "", keywords: "home overview sales report" },
   { href: "/admin/orders", label: "Orders", short: "Orders", icon: BagIcon, group: "Sales", keywords: "order invoice courier delivery cod" },
   { href: "/admin/customers", label: "Customers", short: "Customers", icon: UsersIcon, group: "Sales", keywords: "customer phone block" },
+  { href: "/admin/ads", label: "Ad Performance", short: "Ads", icon: TargetIcon, group: "Sales", keywords: "ads facebook campaign ad set utm report roi delivered" },
   { href: "/admin/dealers", label: "Dealers", short: "Dealers", icon: BriefcaseIcon, group: "Sales", keywords: "dealer business target district thana union" },
   { href: "/admin/products", label: "Products", short: "Products", icon: BoxIcon, group: "Main site", keywords: "product stock price image" },
   { href: "/admin/categories", label: "Categories", short: "Categories", icon: TagIcon, group: "Main site", keywords: "category" },

@@ -35,6 +35,10 @@ export type Order = {
   attribution: string | null;
   utm_source: string | null;
   utm_campaign: string | null;
+  /** Facebook: ad set ID (utm_content). */
+  utm_content: string | null;
+  /** Facebook: ad ID (utm_term). */
+  utm_term: string | null;
   fbp: string | null;
   fbc: string | null;
   event_source_url: string | null;
@@ -81,6 +85,10 @@ export type OrderFilters = {
   time?: string;
   /** utm_campaign of the order (from the visit that led to it). */
   campaign?: string;
+  /** utm_content (Facebook ad set ID). */
+  adset?: string;
+  /** utm_term (Facebook ad ID). */
+  ad?: string;
 };
 
 /** Six-hour slots of the day for the orders "time of day" filter. */
@@ -131,6 +139,14 @@ function buildWhere(filters: OrderFilters) {
   if (filters.campaign?.trim()) {
     where.push("o.utm_campaign = ?");
     params.push(filters.campaign.trim().slice(0, 200));
+  }
+  if (filters.adset?.trim()) {
+    where.push("o.utm_content = ?");
+    params.push(filters.adset.trim().slice(0, 200));
+  }
+  if (filters.ad?.trim()) {
+    where.push("o.utm_term = ?");
+    params.push(filters.ad.trim().slice(0, 200));
   }
   const slot = timeSlot(filters.time);
   if (slot) {

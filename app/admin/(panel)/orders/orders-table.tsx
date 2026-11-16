@@ -24,6 +24,8 @@ type Row = {
   /** "Shop" or the landing page name */
   origin: string;
   campaign: string | null;
+  /** Friendly name of the campaign ID, if known. */
+  campaignName?: string;
   utmSource: string | null;
   pay: { method: string; status: string; label: string; className: string } | null;
 };
@@ -180,7 +182,7 @@ export function OrdersTable({ orders, perms }: { orders: Row[]; perms: Perms }) 
                     <Link href={o.campaign ? `/admin/orders?campaign=${encodeURIComponent(o.campaign)}` : `/admin/orders/${o.id}`}
                       className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded bg-blue-50 px-1.5 py-0.5 text-[10.5px] font-medium text-blue-700 ring-1 ring-inset ring-blue-600/15 hover:bg-blue-100"
                       title={o.campaign ? `Campaign ${o.campaign} — show all its orders` : "Traffic source"}>
-                      {o.utmSource ?? "utm"}{o.campaign ? <span className="truncate font-mono">· {o.campaign}</span> : null}
+                      {o.utmSource ?? "utm"}{o.campaign ? <span className={`truncate ${o.campaignName ? "" : "font-mono"}`}>· {o.campaignName || o.campaign}</span> : null}
                     </Link>
                   )}
                 </td>

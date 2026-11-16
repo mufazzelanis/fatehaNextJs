@@ -13,7 +13,37 @@ export type CustomField = {
   required: boolean;
 };
 
+/** A buying option: 1 jar, a 2-jar combo, a 3-jar combo… The price is for the whole package. */
+export type OrderPackage = {
+  id: string;
+  qty: number;
+  title: string;
+  subtitle: string;
+  /** Package price in taka; 0 = regular price × qty (no discount). */
+  price: number;
+  badge: string;
+  freeDelivery: boolean;
+};
+export type PackagesConfig = { enabled: boolean; title: string; items: OrderPackage[]; defaultId: string };
+export const MAX_PACKAGES = 6;
+
+/** What the customer pays for a package (before delivery). */
+export const packagePrice = (p: Pick<OrderPackage, "price" | "qty">, unitPrice: number) =>
+  p.price > 0 ? p.price : Math.round(unitPrice * p.qty);
+
+export const DEFAULT_PACKAGES: PackagesConfig = {
+  enabled: false,
+  title: "প্যাকেজ বেছে নিন",
+  defaultId: "p1",
+  items: [
+    { id: "p1", qty: 1, title: "১টি জার", subtitle: "নিয়মিত ব্যবহারে প্রায় ১ মাস", price: 0, badge: "", freeDelivery: false },
+    { id: "p2", qty: 2, title: "২টি জারের কম্বো", subtitle: "প্রায় ২ মাসের কোর্স", price: 0, badge: "জনপ্রিয়", freeDelivery: false },
+    { id: "p3", qty: 3, title: "৩টি জারের কম্বো", subtitle: "প্রায় ৩ মাসের পূর্ণ কোর্স", price: 0, badge: "সবচেয়ে সাশ্রয়ী", freeDelivery: false },
+  ],
+};
+
 export type CheckoutConfig = {
+  packages: PackagesConfig;
   billingTitle: string;
   fields: { name: FieldConfig; address: FieldConfig; phone: FieldConfig; note: FieldConfig & { enabled: boolean } };
   customFields: CustomField[];
@@ -62,6 +92,7 @@ export function defaultCheckout(legacy?: { inside?: number; outside?: number }):
     buttonText: "অর্ডার কনফার্ম করুন",
     buttonColor: "#4a5bff",
     showTotalOnButton: true,
+    packages: DEFAULT_PACKAGES,
   };
 }
 
@@ -72,6 +103,33 @@ const slug = (v: string) => v.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0,
 function field(raw: unknown, d: FieldConfig): FieldConfig {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return { label: s(r.label, d.label, 80), placeholder: s(r.placeholder, d.placeholder, 160) };
+}
+
+function normalizePackages(raw: unknown): PackagesConfig {
+  const d = DEFAULT_PACKAGES;
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  if (!Object.keys(r).length) return d;
+  const ids = new Set<string>();
+  const items = (Array.isArray(r.items) ? r.items : [])
+    .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {}))
+    .map((p, i): OrderPackage => ({
+      id: slug(String(p.id ?? "")) || `p${i + 1}`,
+      qty: Math.min(Math.max(Math.trunc(Number(p.qty) || 1), 1), 20),
+      title: s(p.title, "", 80).trim(),
+      subtitle: s(p.subtitle, "", 120).trim(),
+      price: Math.max(0, Math.round(Number(p.price) || 0)),
+      badge: s(p.badge, "", 30).trim(),
+      freeDelivery: p.freeDelivery === true,
+    }))
+    .filter((p) => p.title && !ids.has(p.id) && ids.add(p.id))
+    .slice(0, MAX_PACKAGES);
+  const list = items.length ? items : d.items;
+  return {
+    enabled: r.enabled === true && items.length > 0,
+    title: s(r.title, d.title, 80),
+    items: list,
+    defaultId: typeof r.defaultId === "string" && list.some((p) => p.id === r.defaultId) ? r.defaultId : list[0].id,
+  };
 }
 
 /** Validates stored or submitted config and fills anything missing from the defaults. */
@@ -140,6 +198,7 @@ export function normalizeCheckout(raw: unknown, legacy?: { inside?: number; outs
     buttonText: s(r.buttonText, d.buttonText, 60).trim() || d.buttonText,
     buttonColor: typeof r.buttonColor === "string" && HEX.test(r.buttonColor) ? r.buttonColor : d.buttonColor,
     showTotalOnButton: r.showTotalOnButton !== false,
+    packages: normalizePackages(r.packages),
   };
 }
 

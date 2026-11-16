@@ -3,7 +3,8 @@
 import { useActionState, useRef, useState } from "react";
 import { placeOrder } from "@/app/actions/order";
 import { initialState } from "@/lib/action-state";
-import type { CheckoutConfig, CustomField } from "@/lib/checkout";
+import { packagePrice, type CheckoutConfig, type CustomField } from "@/lib/checkout";
+import { PackagePicker } from "./package-picker";
 import { Spinner } from "../form-bits";
 import { track } from "@/lib/meta/pixel-client";
 import { sized } from "@/lib/media";
@@ -62,17 +63,22 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
   const checkoutStarted = useRef(false);
 
   const zone = config.zones.find((z) => z.id === zoneId) ?? config.zones[0];
+  // Packages (1 jar / 2-jar combo / 3-jar combo…) replace the quantity buttons when the admin turns them on.
+  const pk = config.packages;
+  const [pkgId, setPkgId] = useState(() => (pk.items.some((p) => p.id === state.values?.package) ? state.values!.package : pk.defaultId));
+  const pkg = pk.enabled ? pk.items.find((p) => p.id === pkgId) ?? pk.items[0] : null;
   const maxQty = config.allowQuantity ? Math.max(Math.min(config.maxQuantity, product.stock), 1) : 1;
-  const quantity = Math.min(qty, maxQty);
-  const pixelParams = (q: number) => ({
+  const quantity = pkg ? pkg.qty : Math.min(qty, maxQty);
+  const pixelParams = (q: number, value = product.price * q) => ({
     content_ids: [String(product.id)], content_name: product.name, content_type: "product",
-    value: product.price * q, currency: "BDT", num_items: q,
+    value, currency: "BDT", num_items: q,
   });
+  const pkgOpts = (id: string) => (pk.enabled ? { pkg: { landing: landingId, id } } : {});
   // InitiateCheckout once, the first time the customer touches the form.
   const onFormFocus = () => {
     if (preview || checkoutStarted.current) return;
     checkoutStarted.current = true;
-    track("InitiateCheckout", pixelParams(quantity), { items: [{ id: product.id, qty: quantity }] });
+    track("InitiateCheckout", pixelParams(quantity, subtotal), { items: [{ id: product.id, qty: quantity }], ...(pkg ? pkgOpts(pkg.id) : {}) });
   };
   const increase = () => {
     const next = Math.min(quantity + 1, maxQty);
@@ -80,8 +86,14 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
     setQty(next);
     if (!preview) track("AddToCart", pixelParams(1), { items: [{ id: product.id, qty: 1 }] });
   };
-  const subtotal = product.price * quantity;
-  const total = subtotal + (zone?.charge ?? 0);
+  const subtotal = pkg ? packagePrice(pkg, product.price) : product.price * quantity;
+  const total = subtotal + (pkg?.freeDelivery ? 0 : zone?.charge ?? 0);
+  const choosePackage = (id: string) => {
+    if (id === pkgId || preview) { setPkgId(id); return; }
+    setPkgId(id);
+    const p = pk.items.find((x) => x.id === id);
+    if (p) track("AddToCart", pixelParams(p.qty, packagePrice(p, product.price)), { items: [{ id: product.id, qty: p.qty }], ...pkgOpts(p.id) });
+  };
   const outOfStock = product.stock <= 0;
   const fe = state.fieldErrors ?? {};
   const v = state.values ?? {};
@@ -90,11 +102,12 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
 
   return (
     <form action={preview ? undefined : formAction} onSubmit={preview ? (e) => e.preventDefault() : undefined}
-      onFocus={onFormFocus} noValidate className="grid gap-x-10 gap-y-8 font-ui text-[#2d3748] md:grid-cols-[1.08fr_0.92fr]">
+      onFocus={onFormFocus} onInput={onFormFocus} noValidate className="grid gap-x-10 gap-y-8 font-ui text-[#2d3748] md:grid-cols-[1.08fr_0.92fr]">
       <input type="hidden" name="landing" value={landingId} />
       {!preview && <CheckoutTimer />}
       <input type="hidden" name="zone" value={zone?.id ?? ""} />
       <input type="hidden" name="quantity" value={quantity} />
+      {pkg && <input type="hidden" name="package" value={pkg.id} />}
 
       {/* LEFT */}
       <div className="min-w-0">
@@ -140,7 +153,10 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
         </div>
         <Err msg={fe.zone} />
 
-        <h3 className="mb-3 mt-7 pl-1 text-[20px] font-bold text-[#2d3748] sm:text-[15px] sm:font-semibold sm:text-[#4a5568]">{config.productsTitle}</h3>
+        <h3 className="mb-3 mt-7 pl-1 text-[20px] font-bold text-[#2d3748] sm:text-[15px] sm:font-semibold sm:text-[#4a5568]">{pkg ? pk.title : config.productsTitle}</h3>
+        {pkg ? (
+          <PackagePicker items={pk.items} selected={pkg.id} onSelect={choosePackage} unitPrice={product.price} image={product.image} accent={config.buttonColor} error={fe.package} />
+        ) : (
         <div className="rounded-xl bg-[#f1f1f1] px-3 pb-3 pt-2 sm:rounded-[4px]">
           <div className="hidden grid-cols-[1fr_auto_auto] gap-3 border-b border-[#d9d9d9] py-2 text-[12px] font-semibold text-[#1a202c] sm:grid">
             <span>Product</span><span className="w-[88px] text-center">Quantity</span><span className="w-[60px] text-right">Price</span>
@@ -169,6 +185,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
           </div>
           <Err msg={fe.quantity} />
         </div>
+        )}
       </div>
 
       {/* RIGHT */}
@@ -187,7 +204,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
                 <div className="flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={sized(product.image, 96)} alt="" width={34} height={34} className="size-[42px] object-contain sm:size-[34px]" />
-                  <span className="flex-1 font-sans text-[#4c51bf]">{productLabel}</span>
+                  <span className="flex-1 font-sans text-[#4c51bf]">{productLabel}{pkg && pkg.qty > 1 ? ` — ${pkg.title}` : ""}</span>
                   <span className="whitespace-nowrap text-[#4a5568]">× {quantity}</span>
                 </div>
               </td>
@@ -203,7 +220,7 @@ export function CheckoutForm({ product, config, preview = false, landingId = 0 }
                 {config.zones.map((z) => (
                   <button key={z.id} type="button" onClick={() => setZoneId(z.id)} className="flex items-start gap-1.5 text-left text-[#5a67d8]">
                     <span className="mt-[1px]"><Radio checked={zone?.id === z.id} /></span>
-                    <span className="font-sans">{z.label}: {tk(z.charge)}</span>
+                    <span className="font-sans">{z.label}: {pkg?.freeDelivery ? "ফ্রি" : tk(z.charge)}</span>
                   </button>
                 ))}
               </td>

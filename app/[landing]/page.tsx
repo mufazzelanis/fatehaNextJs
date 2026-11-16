@@ -15,6 +15,7 @@ import { readableButton } from "@/lib/store-config";
 import { mediaSize } from "@/lib/uploads";
 import { ViewContentEvent } from "@/components/meta/meta-pixel";
 import { VideoEmbed } from "@/components/landing/video-embed";
+import { QuickOrderPage } from "@/components/landing/quick-order-page";
 import { videoEmbed, type Block, type SectionKey } from "@/lib/content";
 
 /** Large, thumb-friendly order button: full width on phones, with a soft moving shine so it is easy to spot. */
@@ -100,9 +101,16 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
     l.banner_image ? mediaSize(l.banner_image) : { width: 1060, height: 300 },
   ]);
   const c = l.content;
+  const image = productImageUrl(product);
+  // Short quick-order page (product + packages + form) instead of the long sales page.
+  if (c.pageType === "order") {
+    return (
+      <QuickOrderPage landing={l} preview={preview} settings={ls}
+        product={product ? { id: product.id, name: product.name, weight: product.weight, price: Number(product.price), image, stock: product.stock } : null} />
+    );
+  }
   const t = c.theme;
   const checkout = l.checkout;
-  const image = productImageUrl(product);
   const priceBn = bn(Math.round(product?.price ?? 750));
   const productName = product?.name ?? "মাশরুম ডেন্টোকেয়ার প্লাস";
   const btn = c.orderButtonText;
@@ -239,7 +247,7 @@ async function LandingPage({ landing: l, preview }: { landing: Landing; preview:
   };
 
   return (
-    <div className="bg-white font-sans text-[#111] wrap-anywhere">
+    <div className="bg-white font-sans text-[#111] wrap-break-word">
       {/* ===== HERO: product photo + label banner (always first) ===== */}
       <section className="pb-6 pt-4 sm:pt-6"
         style={{ backgroundImage: `linear-gradient(to bottom, ${t.heroFrom}, color-mix(in srgb, ${t.heroFrom} 50%, white), ${t.heroTo})` }}>

@@ -14,6 +14,11 @@ async function orderHref() {
   "use cache";
   cacheTag(LANDING_TAG);
   cacheLife("hours");
+  // A published quick-order page (landing type "order": product + combos + form) wins; else the first landing's form.
+  const quick = await queryOne<{ slug: string }>(
+    `SELECT slug FROM landing_pages WHERE status = 'published' AND content LIKE '%"pageType":"order"%' ORDER BY id LIMIT 1`,
+  );
+  if (quick) return `/${quick.slug}`;
   const l = await queryOne<{ slug: string }>("SELECT slug FROM landing_pages WHERE status = 'published' ORDER BY id LIMIT 1");
   return l ? `/${l.slug}#order` : "/shop";
 }
@@ -38,7 +43,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
   const GUIDE_PHONES = content.phones;
   const others = GUIDES.filter((g) => g.href !== GUIDE_HREF[current]);
   return (
-    <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c] wrap-anywhere">
+    <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c] wrap-break-word">
       <header className="sticky top-0 z-30 border-b border-[#1d6b4a]/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
           <Link href={order.split("#")[0]} className="flex items-center gap-2.5">
@@ -131,7 +136,7 @@ export function GuideHero({ eyebrow, title, text, icon, image }: { eyebrow: stri
       <div className="relative mx-auto max-w-3xl text-center">
         <span className="mx-auto grid size-20 place-items-center rounded-3xl bg-white text-5xl shadow-md ring-1 ring-[#1d6b4a]/10" aria-hidden="true">{icon}</span>
         <p className="mt-5 text-[16px] font-semibold text-[#2f9a6a]">{eyebrow}</p>
-        <h1 className="mt-1 font-display text-[30px] font-extrabold leading-[1.25] text-[#123f2c] sm:text-[40px]">{title}</h1>
+        <h1 className="mt-1 font-display text-[30px] font-extrabold leading-tight text-[#123f2c] sm:text-[40px]">{title}</h1>
         <div className="mx-auto mt-4 max-w-2xl text-[18px] leading-[1.75] text-[#34503f]">{text}</div>
         {image && <GuideImage src={image} alt={title} sizes="(min-width: 768px) 672px, calc(100vw - 32px)" priority className="mx-auto mt-7 max-w-2xl shadow-lg ring-1 ring-[#1d6b4a]/10" />}
       </div>

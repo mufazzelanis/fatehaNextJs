@@ -89,7 +89,7 @@ export function newEventId(prefix: string) {
   return `${prefix}_${random}`.slice(0, 80);
 }
 
-type TrackOptions = { eventId?: string; quantity?: number; serverSide?: boolean; items?: { id: number; qty: number }[] };
+type TrackOptions = { eventId?: string; quantity?: number; serverSide?: boolean; items?: { id: number; qty: number }[]; pkg?: { landing: number; id: string } };
 
 /** Fires a standard event in the browser and mirrors it to the Conversions API. Queues until the pixel is initialised. */
 export function track(name: string, params: Record<string, unknown> = {}, options: TrackOptions = {}) {
@@ -99,7 +99,7 @@ export function track(name: string, params: Record<string, unknown> = {}, option
     if (setup.browser && window.fbq) for (const id of active ?? []) window.fbq("trackSingle", id, name, params, { eventID: eventId });
     const serverAllowed = options.serverSide !== false && setup.capi && (name !== "PageView" || setup.serverPageView);
     if (serverAllowed) {
-      trackServerEvent({ name, eventId, url: window.location.href, quantity: options.quantity, items: options.items }).catch(() => {});
+      trackServerEvent({ name, eventId, url: window.location.href, quantity: options.quantity, items: options.items, pkg: options.pkg }).catch(() => {});
     }
   };
   if (setup && active) run();

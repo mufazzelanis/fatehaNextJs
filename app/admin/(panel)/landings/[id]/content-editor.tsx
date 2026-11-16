@@ -190,6 +190,39 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
         The product photo comes from <Link href="/admin/products" className="font-medium underline">Products</Link>; the label banner is set on the Setup tab.
       </div>
 
+      <section className="a-card p-5">
+        <h2 className="font-medium text-slate-900">Page type</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2" role="radiogroup">
+          {([
+            ["full", "Full landing page", "The long sales page: banner, intro, benefits, FAQ, ingredients… and the order form at the end."],
+            ["order", "Quick order page", "A short page: product, packages (1 / 2-jar combo / 3-jar combo) and the order form. Turn on packages in the Checkout form tab. The guide pages' order button opens this page."],
+          ] as const).map(([value, title, text]) => (
+            <button key={value} type="button" role="radio" aria-checked={c.pageType === value} onClick={() => set("pageType", value)}
+              className={`rounded-xl border-2 p-3.5 text-left transition ${c.pageType === value ? "border-brand-500 bg-brand-50/60" : "border-slate-200 hover:bg-slate-50"}`}>
+              <span className="block text-sm font-semibold text-slate-900">{c.pageType === value ? "● " : "○ "}{title}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">{text}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {c.pageType === "order" && (
+        <Section title="Quick order page text" hint="Shown beside the product photo" defaultOpen>
+          <Text label="Title (leave empty to use the product name)" value={c.quick.title} onChange={(v) => set("quick", { ...c.quick, title: v })} />
+          <Text label="Short text" rows={2} value={c.quick.subtitle} onChange={(v) => set("quick", { ...c.quick, subtitle: v })} />
+          <div>
+            <span className="a-label">Key points (shown with green ticks)</span>
+            <ListEditor items={c.quick.points} onChange={(v) => set("quick", { ...c.quick, points: v })} addLabel="Add point" />
+          </div>
+          <div>
+            <span className="a-label">Trust badges (small chips, up to 4)</span>
+            <ListEditor items={c.quick.trust} onChange={(v) => set("quick", { ...c.quick, trust: v.slice(0, 4) })} addLabel="Add badge" />
+          </div>
+          <Text label="Heading above the guide links" value={c.quick.guidesTitle} onChange={(v) => set("quick", { ...c.quick, guidesTitle: v })} />
+        </Section>
+      )}
+
+      {c.pageType === "full" && <>
       <Section title="Page layout" hint="Order of the sections, show / hide, and add new sections (text, photos, video, customer reviews)" defaultOpen>
         <LayoutEditor c={c} patch={patch} />
       </Section>
@@ -245,12 +278,15 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
         </div>
       </Section>
 
+      </>}
+
       <Section title="Order form & thank-you page" hint="Checkout heading and the message after ordering">
         <Text label="Order form heading" value={c.checkoutTitle} onChange={(v) => set("checkoutTitle", v)} />
         <Text label="Thank-you page title" value={c.thankyouTitle} onChange={(v) => set("thankyouTitle", v)} />
         <Text label="Thank-you page subtitle" value={c.thankyouSubtitle} onChange={(v) => set("thankyouSubtitle", v)} />
       </Section>
 
+      {c.pageType === "full" && <>
       <Section title="Theme & background colors" hint="Page colors — pick a ready-made set or choose each color">
         <div className="flex flex-wrap gap-2">
           {THEME_PRESETS.map((p) => (
@@ -281,6 +317,7 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
           ))}
         </div>
       </Section>
+      </>}
 
       {/* Sticky save bar */}
       <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgb(15_23_42/0.06)] backdrop-blur lg:bottom-0 lg:left-64">

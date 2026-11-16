@@ -7,6 +7,8 @@ import { customerUserData, sendServerEvents, type UserData } from "@/lib/meta/ca
 import { requestUserData } from "@/lib/meta/request";
 import { query } from "@/lib/db";
 import { parseDevice } from "@/lib/device";
+import { getLandingById } from "@/lib/data/landings";
+import { packagePrice } from "@/lib/checkout";
 
 const ALLOWED = ["PageView", "ViewContent", "InitiateCheckout", "AddToCart"] as const;
 type BrowserEvent = (typeof ALLOWED)[number];
@@ -16,7 +18,11 @@ type BrowserEvent = (typeof ALLOWED)[number];
  * event through the Conversions API so Meta can deduplicate them. Values come from the database,
  * never from the browser.
  */
-export async function trackServerEvent(input: { name: string; eventId: string; url: string; quantity?: number; items?: { id: number; qty: number }[] }) {
+export async function trackServerEvent(input: {
+  name: string; eventId: string; url: string; quantity?: number; items?: { id: number; qty: number }[];
+  /** A landing package (2-jar combo…): the value is that package's price, read from the database. */
+  pkg?: { landing: number; id: string };
+}) {
   if (!(ALLOWED as readonly string[]).includes(input.name)) return;
   if (!/^[\w-]{8,80}$/.test(input.eventId)) return;
   const config = await getMarketingConfig();
@@ -60,6 +66,21 @@ export async function trackServerEvent(input: { name: string; eventId: string; u
         content_name: lines.length === 1 ? lines[0].name : undefined,
         contents: lines.map(({ id, quantity, item_price }) => ({ id, quantity, item_price })),
         num_items: lines.reduce((s, l) => s + l.quantity, 0),
+      };
+    }
+  }
+
+  if (name !== "PageView" && input.pkg && Number.isInteger(input.pkg.landing) && typeof input.pkg.id === "string") {
+    const landing = await getLandingById(input.pkg.landing);
+    const pkg = landing?.checkout.packages.enabled ? landing.checkout.packages.items.find((p) => p.id === input.pkg!.id) : undefined;
+    const product = pkg && landing?.product_id
+      ? (await query<{ id: number; name: string; price: number }>("SELECT id, name, price FROM products WHERE is_active = 1 AND id = ?", [landing.product_id]))[0]
+      : undefined;
+    if (pkg && product) {
+      const value = packagePrice(pkg, Number(product.price));
+      customData = {
+        currency: "BDT", value, content_type: "product", content_ids: [String(product.id)], content_name: `${product.name} — ${pkg.title}`,
+        contents: [{ id: String(product.id), quantity: pkg.qty, item_price: Math.round((value / pkg.qty) * 100) / 100 }], num_items: pkg.qty,
       };
     }
   }

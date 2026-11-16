@@ -3,7 +3,7 @@
 import { useActionState, useState, type ReactNode } from "react";
 import { saveCheckoutConfig } from "@/app/actions/admin";
 import { initialState } from "@/lib/action-state";
-import { defaultCheckout, MAX_CUSTOM_FIELDS, MAX_ZONES, type CheckoutConfig, type CustomField, type ShippingZone } from "@/lib/checkout";
+import { defaultCheckout, MAX_CUSTOM_FIELDS, MAX_PACKAGES, MAX_ZONES, packagePrice, type CheckoutConfig, type CustomField, type OrderPackage, type ShippingZone } from "@/lib/checkout";
 import { CheckoutForm } from "@/components/landing/checkout-form";
 import { FormAlert, SubmitButton } from "@/components/form-bits";
 import { ChevronDownIcon, EyeIcon, PlusIcon, TrashIcon } from "@/components/icons";
@@ -86,6 +86,10 @@ export function CheckoutEditor({ initial, product, landingId }: { initial: Check
     set("fields", { ...c.fields, [key]: { ...c.fields[key], ...patch } });
   const setZone = (i: number, patch: Partial<ShippingZone>) => set("zones", c.zones.map((z, j) => (j === i ? { ...z, ...patch } : z)));
   const setCustom = (i: number, patch: Partial<CustomField>) => set("customFields", c.customFields.map((f, j) => (j === i ? { ...f, ...patch } : f)));
+  const pk = c.packages;
+  const setPk = (patch: Partial<CheckoutConfig["packages"]>) => set("packages", { ...pk, ...patch });
+  const setPkg = (i: number, patch: Partial<OrderPackage>) => setPk({ items: pk.items.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
+  const newPkgId = () => { let n = pk.items.length + 1; while (pk.items.some((p) => p.id === `p${n}`)) n++; return `p${n}`; };
 
   const preview = (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
@@ -179,6 +183,60 @@ export function CheckoutEditor({ initial, product, landingId }: { initial: Check
               </button>
             )}
             <p className="text-xs text-slate-400">Existing orders keep the zone name and charge they were placed with.</p>
+          </Section>
+
+          <Section title="Packages — 1 jar / 2-jar combo / 3-jar combo" hint={pk.enabled ? `On — ${pk.items.length} packages, customers pick one` : "Off — customers choose a quantity instead"} open={pk.enabled}>
+            <Switch checked={pk.enabled} onChange={(v) => setPk({ enabled: v })} label="Sell in packages (combos)"
+              hint="Customers pick a package card; its price and free delivery are used for the order, the Facebook events and the Conversions API." />
+            {pk.enabled && <>
+              <Text label="Heading above the packages" value={pk.title} onChange={(v) => setPk({ title: v })} />
+              <div className="space-y-3">
+                {pk.items.map((p, i) => {
+                  const regular = product.price * p.qty;
+                  const price = packagePrice(p, product.price);
+                  return (
+                    <div key={p.id} className={`space-y-3 rounded-xl border p-4 ${pk.defaultId === p.id ? "border-brand-300 bg-brand-50/40" : "border-slate-200 bg-slate-50/60"}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-500">Package {i + 1}</span>
+                        <label className="ml-2 flex items-center gap-1.5 text-xs text-slate-600">
+                          <input type="radio" name="pkg-default" checked={pk.defaultId === p.id} onChange={() => setPk({ defaultId: p.id })} className="accent-brand-600" />
+                          Selected first
+                        </label>
+                        <span className="ml-auto" />
+                        <RowButtons i={i} n={pk.items.length} onMove={(d) => setPk({ items: move(pk.items, i, d) })}
+                          onRemove={() => pk.items.length > 1 && setPk({ items: pk.items.filter((_, j) => j !== i), defaultId: pk.defaultId === p.id ? pk.items.find((_, j) => j !== i)!.id : pk.defaultId })} />
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-[6rem_1fr]">
+                        <label className="block"><span className="a-label">Jars</span>
+                          <input type="number" min={1} max={20} value={p.qty} onChange={(e) => setPkg(i, { qty: Math.max(1, Number(e.target.value) || 1) })} className="a-input" /></label>
+                        <Text label="Name" value={p.title} onChange={(v) => setPkg(i, { title: v })} />
+                      </div>
+                      <Text label="Small line under the name" value={p.subtitle} onChange={(v) => setPkg(i, { subtitle: v })} />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block"><span className="a-label">Package price (৳)</span>
+                          <input type="number" min={0} value={p.price || ""} placeholder={String(regular)} onChange={(e) => setPkg(i, { price: Math.max(0, Number(e.target.value) || 0) })} className="a-input" />
+                          <span className="mt-1 block text-xs text-slate-500">
+                            Regular: ৳{regular} ({p.qty} × ৳{product.price}). {price < regular ? <b className="text-emerald-700">Customer saves ৳{regular - price}</b> : "Empty = regular price, no discount."}
+                          </span>
+                        </label>
+                        <Text label="Badge (optional)" value={p.badge} onChange={(v) => setPkg(i, { badge: v })} hint="e.g. জনপ্রিয়, সবচেয়ে সাশ্রয়ী" />
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="checkbox" checked={p.freeDelivery} onChange={(e) => setPkg(i, { freeDelivery: e.target.checked })} className="size-4 accent-brand-600" />
+                        Free delivery with this package
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+              {pk.items.length < MAX_PACKAGES && (
+                <button type="button" onClick={() => { const n = pk.items.length + 1; setPk({ items: [...pk.items, { id: newPkgId(), qty: n, title: `${n}টি জারের কম্বো`, subtitle: "", price: 0, badge: "", freeDelivery: false }] }); }}
+                  className="a-btn-outline py-1.5"><PlusIcon className="size-4" /> Add a package</button>
+              )}
+              {pk.items.some((p) => p.qty > 1 && !p.price) && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Tip: set a combo price lower than the regular price so customers see the saving.</p>
+              )}
+            </>}
           </Section>
 
           <Section title="Product & quantity">

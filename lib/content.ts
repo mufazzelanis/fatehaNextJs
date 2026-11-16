@@ -43,7 +43,14 @@ export type LandingContent = {
   layout: SectionKey[];
   /** Extra sections the admin adds: text, image, video, customer reviews. Placed via `layout` ("b:<id>"). */
   blocks: Block[];
+  /** "full" = the long sales page; "order" = a short quick-order page (product, packages, form). */
+  pageType: PageType;
+  quick: QuickContent;
 };
+
+export type PageType = "full" | "order";
+/** Text of the quick-order page (title empty = the product name). */
+export type QuickContent = { title: string; subtitle: string; points: string[]; trust: string[]; guidesTitle: string };
 
 export type LandingTheme = {
   heroFrom: string;
@@ -200,6 +207,14 @@ export const DEFAULT_CONTENT: LandingContent = {
   },
   layout: [...BUILTIN_SECTIONS],
   blocks: [],
+  pageType: "full",
+  quick: {
+    title: "",
+    subtitle: "পছন্দের প্যাকেজ বেছে নিয়ে নিচের ফর্মটি পূরণ করুন — পণ্য হাতে পেয়ে টাকা দিন।",
+    points: ["১০০% প্রাকৃতিক উপাদানে তৈরি", "বি এস টি আই ও সাইন্সল্যাব অনুমোদিত", "দাঁতের ব্যথা, মাড়ির সমস্যা ও মুখের দুর্গন্ধে কার্যকর", "সকাল-রাত ব্রাশে সহজ ব্যবহার"],
+    trust: ["💵 ক্যাশ অন ডেলিভারি", "🚚 সারা বাংলাদেশে ডেলিভারি", "✅ অরিজিনাল পণ্য"],
+    guidesTitle: "অর্ডারের আগে জেনে নিন",
+  },
 };
 
 const FILE = /^[\w.-]{1,120}\.(?:jpe?g|png|webp)$/i;
@@ -301,5 +316,17 @@ export function normalizeContent(raw: unknown): LandingContent {
     theme,
     layout: normalizeLayout(r.layout, blocks),
     blocks,
+    pageType: r.pageType === "order" ? "order" : "full",
+    quick: (() => {
+      const q = (r.quick && typeof r.quick === "object" ? r.quick : {}) as Record<string, unknown>;
+      const dq = d.quick;
+      return {
+        title: str(q.title, dq.title, 160),
+        subtitle: str(q.subtitle, dq.subtitle, 400),
+        points: Array.isArray(q.points) ? list(q.points, []).map((x) => x.trim()).filter(Boolean).slice(0, 8) : dq.points,
+        trust: Array.isArray(q.trust) ? list(q.trust, []).map((x) => x.trim().slice(0, 60)).filter(Boolean).slice(0, 4) : dq.trust,
+        guidesTitle: str(q.guidesTitle, dq.guidesTitle, 120),
+      };
+    })(),
   };
 }

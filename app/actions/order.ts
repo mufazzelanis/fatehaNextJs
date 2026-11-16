@@ -15,7 +15,7 @@ import { revalidateStock } from "@/lib/data/catalog";
 import { alertNewOrder } from "@/lib/notify";
 import { logActivity } from "@/lib/activity";
 import { clientIpFrom } from "@/lib/client-ip";
-import { readCheckoutTiming, readOrderAttribution } from "@/lib/checkout";
+import { readCheckoutTiming, readOrderAttribution, packagePrice } from "@/lib/checkout";
 import { isIpBlocked } from "@/lib/ip-block";
 import { getOrderByNo } from "@/lib/data/orders";
 import { normalizePhone } from "@/lib/phone";
@@ -35,6 +35,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
     note: checkout.fields.note.enabled ? String(formData.get("note") ?? "").trim() : "",
     zone: String(formData.get("zone") ?? ""),
     quantity: String(formData.get("quantity") ?? "1"),
+    package: String(formData.get("package") ?? ""),
   };
 
   const fieldErrors: Record<string, string> = {};
@@ -49,9 +50,13 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   const zone = checkout.zones.find((z) => z.id === values.zone);
   if (!zone) fieldErrors.zone = "ডেলিভারি এলাকা নির্বাচন করুন";
 
+  // Packages (1 jar / 2-jar combo / 3-jar combo…): quantity, price and free delivery come from the saved
+  // package, never from the browser.
+  const pkg = checkout.packages.enabled ? checkout.packages.items.find((p) => p.id === values.package) ?? null : null;
+  if (checkout.packages.enabled && !pkg) fieldErrors.package = "একটি প্যাকেজ বেছে নিন";
   const maxQty = checkout.allowQuantity ? checkout.maxQuantity : 1;
-  const quantity = Math.trunc(Number(values.quantity));
-  if (!Number.isFinite(quantity) || quantity < 1 || quantity > maxQty) {
+  const quantity = pkg ? pkg.qty : Math.trunc(Number(values.quantity));
+  if (!pkg && !checkout.packages.enabled && (!Number.isFinite(quantity) || quantity < 1 || quantity > maxQty)) {
     fieldErrors.quantity = maxQty === 1 ? "একবারে ১টি অর্ডার করা যাবে" : `পরিমাণ ১ থেকে ${bn(maxQty)} এর মধ্যে হতে হবে`;
   }
 
@@ -95,7 +100,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
     return { error: "দুঃখিত, এই মুহূর্তে আপনার সংযোগ থেকে অর্ডার গ্রহণ করা যাচ্ছে না। আমাদের সাথে যোগাযোগ করুন।", values };
   }
   const userAgent = requestHeaders.get("user-agent")?.slice(0, 300) ?? null;
-  const shipping = zone.charge;
+  const shipping = pkg?.freeDelivery ? 0 : zone.charge;
   // Browser identifiers for the Conversions API, kept so Purchase can also be sent later (on confirm/deliver).
   const cookieStore = await cookies();
   const fbp = cookieStore.get("_fbp")?.value?.slice(0, 255) ?? null;
@@ -116,7 +121,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
       if (!product) throw new OrderError("পণ্যটি এই মুহূর্তে পাওয়া যাচ্ছে না");
       if (product.stock < quantity) throw new OrderError("দুঃখিত, পর্যাপ্ত স্টক নেই");
 
-      const subtotal = Number(product.price) * quantity;
+      const subtotal = pkg ? packagePrice(pkg, Number(product.price)) : Number(product.price) * quantity;
       const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO orders (user_id, customer_name, phone, address, note, shipping_zone, shipping_charge,
                              subtotal, total, ip_address, user_agent, fbp, fbc, event_source_url, shipping_label, custom_fields, source, landing_id,
@@ -132,7 +137,8 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
       await conn.query(
         `INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [orderId, product.id, `${product.name}${product.weight ? ` (${product.weight})` : ""}`, product.price, quantity, subtotal],
+        [orderId, product.id, `${product.name}${product.weight ? ` (${product.weight})` : ""}${pkg && pkg.qty > 1 ? ` — ${pkg.title}` : ""}`,
+         pkg ? Math.round((subtotal / quantity) * 100) / 100 : product.price, quantity, subtotal],
       );
       await conn.query("UPDATE products SET stock = stock - ? WHERE id = ?", [quantity, product.id]);
       await conn.query("INSERT INTO order_status_history (order_id, status, note) VALUES (?, 'pending', ?)", [
@@ -158,7 +164,7 @@ export async function placeOrder(_prev: ActionState, formData: FormData): Promis
   }
   await logActivity({
     action: "order.created", module: "orders", entityType: "order", entityId: placed.orderId,
-    description: `New order #${placed.no} from ${values.name} (${phone}) — ${quantity} item(s), ${zone.label} · landing “${landing.name}”`,
+    description: `New order #${placed.no} from ${values.name} (${phone}) — ${pkg ? `${pkg.title} (${quantity} item(s))` : `${quantity} item(s)`}, ${zone.label} · landing “${landing.name}”`,
   });
 
   // Admin email + optional customer SMS, after the response so a slow gateway never delays the order.

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { cacheLife } from "next/cache";
 import { getCategories, getStoreConfig } from "@/lib/data/catalog";
+import { getBusinessProfile } from "@/lib/data/business";
+import { socialLinks } from "@/lib/business";
 import { StoreHeader } from "./store-header";
 import { CartDrawer } from "./cart-drawer";
 import { StoreBottomNav } from "./store-bottom-nav";
@@ -16,7 +18,8 @@ async function Year() {
 
 /** Header, category bar, footer, cart drawer and mobile tab bar shared by every storefront page. */
 export async function StoreShell({ children }: { children: ReactNode }) {
-  const [categories, cfg] = await Promise.all([getCategories(), getStoreConfig()]);
+  const [categories, cfg, biz] = await Promise.all([getCategories(), getStoreConfig(), getBusinessProfile()]);
+  const socials = socialLinks(biz);
   return (
     <StoreUIProvider buttons={cfg.buttons} className="flex min-h-screen flex-col bg-[#f4f6f8] font-ui text-ink">
       <Suspense fallback={<div className="h-[148px] bg-white" />}>
@@ -30,7 +33,7 @@ export async function StoreShell({ children }: { children: ReactNode }) {
             [CashIcon, "Cash on Delivery", "Pay when it arrives"],
             [TruckIcon, "Nationwide delivery", cfg.deliveryDays],
             [ShieldIcon, "100% authentic", "Imported & sealed"],
-            [PhoneIcon, "Friendly support", cfg.supportPhone || "We're here to help"],
+            [PhoneIcon, "Friendly support", biz.phone || "We're here to help"],
           ].map(([I, t, s]) => {
             const Icon = I as typeof CashIcon;
             return (
@@ -53,8 +56,14 @@ export async function StoreShell({ children }: { children: ReactNode }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/fatehabd-logo.webp" alt="FatehaBD" width={729} height={121} className="h-7 w-auto" />
             </span>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed">Your one-stop shop for authentic baby food and baby care — delivered across Bangladesh.</p>
-            {cfg.facebookUrl && <a href={cfg.facebookUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-medium text-fb-300 hover:text-white">Follow us on Facebook →</a>}
+            <p className="mt-4 max-w-xs text-sm leading-relaxed">{biz.tagline || "Your one-stop shop for authentic baby food and baby care — delivered across Bangladesh."}</p>
+            {socials.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {socials.map((x) => (
+                  <a key={x.key} href={x.url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80 transition hover:bg-white/20 hover:text-white">{x.label}</a>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Shop</p>
@@ -82,17 +91,19 @@ export async function StoreShell({ children }: { children: ReactNode }) {
               <li><Link href="/business/register" className="hover:text-white">Become a dealer</Link></li>
               <li><Link href="/account" className="hover:text-white">My account</Link></li>
             </ul>
-            {(cfg.supportPhone || cfg.supportEmail) && (
+            {(biz.phone || biz.email || biz.address || biz.whatsapp) && (
               <div className="mt-5 space-y-1 text-sm">
-                {cfg.supportPhone && <a href={`tel:${cfg.supportPhone}`} className="block hover:text-white">{cfg.supportPhone}</a>}
-                {cfg.supportEmail && <a href={`mailto:${cfg.supportEmail}`} className="block hover:text-white">{cfg.supportEmail}</a>}
+                {biz.phone && <a href={`tel:${biz.phone}`} className="block tabular-nums hover:text-white">📞 {biz.phone}</a>}
+                {biz.whatsapp && <a href={`https://wa.me/${biz.whatsapp}`} target="_blank" rel="noopener noreferrer" className="block hover:text-white">💬 WhatsApp</a>}
+                {biz.email && <a href={`mailto:${biz.email}`} className="block break-all hover:text-white">✉️ {biz.email}</a>}
+                {biz.address && <p className="text-white/60">📍 {biz.address}</p>}
               </div>
             )}
           </div>
         </div>
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs sm:flex-row">
-            <p>© <Year /> Fatehabd. All rights reserved.</p>
+            <p>© <Year /> {biz.name}. All rights reserved.</p>
             <p className="flex items-center gap-2">We accept <span className="rounded bg-white/10 px-1.5 py-0.5">COD</span><span className="rounded bg-[#d1105f] px-1.5 py-0.5 text-white">bKash</span><span className="rounded bg-[#f6921e] px-1.5 py-0.5 text-ink">Nagad</span><span className="rounded bg-[#8c3494] px-1.5 py-0.5 text-white">Rocket</span></p>
           </div>
         </div>

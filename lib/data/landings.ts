@@ -6,6 +6,7 @@ import { normalizeCheckout, type CheckoutConfig } from "../checkout";
 import { normalizeLandingSettings, type LandingSettings, type LandingStatus } from "../landing";
 import { normalizeInvoice, type InvoiceConfig } from "../invoice";
 import type { Product } from "./store";
+import { BUSINESS_TAG, readBusinessProfile } from "./business";
 
 export const LANDING_TAG = "landings";
 
@@ -64,7 +65,7 @@ export const landingBannerUrl = (l: Pick<Landing, "banner_image">) => (l.banner_
 
 export async function getLandingSettings(): Promise<LandingSettings> {
   "use cache";
-  cacheTag(LANDING_TAG);
+  cacheTag(LANDING_TAG, BUSINESS_TAG);
   cacheLife("hours");
   return readLandingSettings();
 }
@@ -74,10 +75,13 @@ export async function readLandingSettings(): Promise<LandingSettings> {
     "SELECT `key`, `value` FROM settings WHERE `key` IN ('landing_settings', 'contact_phone', 'whatsapp_number', 'duplicate_block_minutes')",
   );
   const v = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
-  return normalizeLandingSettings(parse(v.landing_settings ?? null), {
+  const ls = normalizeLandingSettings(parse(v.landing_settings ?? null), {
     contactPhone: v.contact_phone ?? "", whatsapp: (v.whatsapp_number ?? "").replace(/\D/g, ""),
     duplicateMinutes: v.duplicate_block_minutes ? Number(v.duplicate_block_minutes) : 30,
   });
+  // Name, call and WhatsApp numbers come from Admin → Business Info (one place for the whole site).
+  const b = await readBusinessProfile();
+  return { ...ls, footerName: b.name || ls.footerName, contactPhone: b.phone, whatsapp: b.whatsapp };
 }
 
 export async function readInvoiceConfig(): Promise<InvoiceConfig> {

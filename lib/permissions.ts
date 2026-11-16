@@ -94,6 +94,7 @@ export const PAGE_PERMISSION: Record<string, Permission> = {
   "/admin/landing-settings": "settings.manage",
   "/admin/invoice-settings": "settings.manage",
   "/admin/notifications": "settings.manage",
+  "/admin/business": "settings.manage",
   "/admin/pixel": "marketing.manage",
   "/admin/users": "users.manage",
   "/admin/activity": "logs.view",

@@ -1,3 +1,4 @@
+import { readBusinessProfile } from "@/lib/data/business";
 import Link from "next/link";
 import { Suspense } from "react";
 import { requirePermission } from "@/lib/auth";
@@ -30,7 +31,10 @@ async function Invoices({ searchParams }: Pick<PageProps<"/admin/invoice">, "sea
   const design = one("design") === "store" || one("design") === "landing" ? (one("design") as "store" | "landing") : "auto";
   const paper = ["a4", "a5", "pos80"].includes(one("paper")) ? (one("paper") as InvoicePaper) : null;
   const list = ids.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 100);
-  const [config, ...orders] = await Promise.all([readInvoiceConfig(), ...list.map((id) => getOrderById(id))]);
+  const [rawConfig, biz, ...orders] = await Promise.all([readInvoiceConfig(), readBusinessProfile(), ...list.map((id) => getOrderById(id))]);
+  // Phone / email / address left empty in the invoice design → Business Info.
+  const fill = (p: typeof rawConfig.store) => ({ ...p, phone: p.phone || biz.phone, email: p.email || biz.email, address: p.address || biz.address });
+  const config = { store: fill(rawConfig.store), landing: fill(rawConfig.landing) };
   const found = orders.filter((o) => o !== null);
 
   const landingIds = [...new Set(found.map((o) => o.landing_id).filter((x): x is number => !!x))];

@@ -6,6 +6,8 @@ import { GuideImage } from "@/components/guide/guide-image";
 import { FeedbackForm } from "@/components/guide/feedback-form";
 import { getGuideContent } from "@/lib/data/guides";
 import { prettyPhone } from "@/lib/guides";
+import { getBusinessProfile } from "@/lib/data/business";
+import { socialLinks } from "@/lib/business";
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getGuideContent();
@@ -29,14 +31,17 @@ function linkStyle(url: string) {
 const external = (href: string) => /^https?:/.test(href);
 
 export default async function ThankYouPage() {
-  const c = await getGuideContent();
+  const [c, biz] = await Promise.all([getGuideContent(), getBusinessProfile()]);
   if (!c.pages.thanks.enabled) notFound();
   const t = c.thanks;
-  // No links set yet: WhatsApp + call the first expert number.
-  const phone = c.phones[0];
-  const links = t.links.length ? t.links : phone
-    ? [{ label: "WhatsApp", url: `https://wa.me/88${phone.replace(/^\+?88/, "")}` }, { label: `কল করুন ${prettyPhone(phone)}`, url: `tel:${phone}` }]
-    : [];
+  // No links set on this page → the business WhatsApp, phone and social links (Admin → Business Info).
+  const phone = biz.phone || c.phones[0];
+  const wa = biz.whatsapp || (c.phones[0] ? `88${c.phones[0].replace(/^\+?88/, "")}` : "");
+  const links = t.links.length ? t.links : [
+    ...(wa ? [{ label: "WhatsApp", url: `https://wa.me/${wa}` }] : []),
+    ...(phone ? [{ label: `কল করুন ${prettyPhone(phone)}`, url: `tel:${phone}` }] : []),
+    ...socialLinks(biz).map((x) => ({ label: x.label, url: x.url })),
+  ];
 
   return (
     <GuideShell current="thanks">

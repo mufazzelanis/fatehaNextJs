@@ -8,6 +8,7 @@ import { FormAlert, SubmitButton } from "@/components/form-bits";
 import type { CardProduct } from "@/components/store/product-card";
 import { ButtonDesigner } from "./button-designer";
 import { ChevronDownIcon, ImageIcon, PlusIcon, TrashIcon, XIcon } from "@/components/icons";
+import { BusinessNote } from "@/components/admin/business-note";
 
 const TONES: { key: HeroSlide["tone"]; label: string; cls: string }[] = [
   { key: "teal", label: "Teal", cls: "from-fb-600 to-fb-800" },
@@ -166,13 +167,7 @@ export function StorefrontForm({ config, links, sample }: {
       <div className="min-w-0 space-y-6">
         <section className="a-card space-y-3 p-5">
           <h2 className="font-medium text-slate-900">Contact & support</h2>
-          <Text label="Support phone / WhatsApp" value={c.supportPhone} max={20} onChange={(v) => set({ supportPhone: v })} />
-          <Text label="Email" value={c.supportEmail} max={120} onChange={(v) => set({ supportEmail: v })} />
-          <label className="block">
-            <span className="a-label">Address</span>
-            <textarea value={c.supportAddress} rows={2} maxLength={300} onChange={(e) => set({ supportAddress: e.target.value })} className="a-input" />
-          </label>
-          <Text label="Facebook page URL" value={c.facebookUrl} max={200} placeholder="https://facebook.com/…" onChange={(v) => set({ facebookUrl: v })} />
+          <BusinessNote items={[{ label: "Phone, WhatsApp, email, address and social links", value: "Business Info" }]} />
           <Num label="Return policy (days, 0 = hide)" value={c.returnDays} onChange={(v) => set({ returnDays: v })} />
         </section>
         <div className="space-y-3 xl:sticky xl:top-24">
@@ -189,15 +184,6 @@ function Num({ label, value, onChange }: { label: string; value: number; onChang
     <label className="block">
       <span className="a-label">{label}</span>
       <input type="number" min={0} value={value} onChange={(e) => onChange(Number(e.target.value) || 0)} className="a-input" />
-    </label>
-  );
-}
-
-function Text({ label, value, onChange, max, placeholder }: { label: string; value: string; onChange: (v: string) => void; max: number; placeholder?: string }) {
-  return (
-    <label className="block">
-      <span className="a-label">{label}</span>
-      <input value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="a-input" />
     </label>
   );
 }

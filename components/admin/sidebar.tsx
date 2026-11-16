@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { href: "/admin/landings", label: "Landing Pages", short: "Landings", icon: EditIcon, group: "Landing pages", keywords: "landing page url content checkout form" },
   { href: "/admin/combo", label: "Combo Order Page", short: "Combo", icon: CartIcon, group: "Landing pages", keywords: "combo package offer 2 3 jar order page price free delivery" },
   { href: "/admin/landing-settings", label: "Landing Settings", short: "Landing", icon: CartIcon, group: "Landing pages", keywords: "landing footer whatsapp call prefix" },
+  { href: "/admin/business", label: "Business Info", short: "Business", icon: StoreIcon, group: "System", keywords: "business name phone number whatsapp email address facebook instagram youtube social contact hours" },
   { href: "/admin/notifications", label: "Email, SMS & OTP", short: "Notify", icon: BellIcon, group: "System", keywords: "smtp email sms otp gateway bulksms alert two factor 2fa sign-in code" },
   { href: "/admin/invoice-settings", label: "Invoice Settings", short: "Invoice", icon: PrinterIcon, group: "System", keywords: "invoice print pdf logo receipt" },
   { href: "/admin/pixel", label: "Facebook Pixel", short: "Pixel", icon: TargetIcon, group: "System", keywords: "facebook pixel conversion api capi meta" },

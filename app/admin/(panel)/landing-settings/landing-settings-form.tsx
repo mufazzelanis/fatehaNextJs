@@ -6,6 +6,7 @@ import { initialState } from "@/lib/action-state";
 import type { LandingSettings } from "@/lib/landing";
 import { FormAlert, SubmitButton } from "@/components/form-bits";
 import { PhoneIcon, WhatsappIcon } from "@/components/icons";
+import { BusinessNote } from "@/components/admin/business-note";
 
 export function LandingSettingsForm({ initial }: { initial: LandingSettings }) {
   const [state, action] = useActionState(saveGlobalLandingSettings, initialState);
@@ -18,11 +19,7 @@ export function LandingSettingsForm({ initial }: { initial: LandingSettings }) {
       <div className="min-w-0 space-y-6 xl:col-span-2">
         <section className="a-card space-y-4 p-5">
           <h2 className="font-medium text-slate-900">Branding defaults</h2>
-          <label className="block">
-            <span className="a-label">Footer brand name</span>
-            <input value={c.footerName} maxLength={120} onChange={(e) => set({ footerName: e.target.value })} className="a-input font-sans" />
-            <span className="mt-1 block text-xs text-slate-400">“© 2026 {c.footerName || "…"}. All rights reserved.” on landing pages without their own name.</span>
-          </label>
+          <BusinessNote items={[{ label: "Footer brand name", value: c.footerName }]} />
           <label className="block">
             <span className="a-label">Order number prefix for new landing pages</span>
             <input value={c.defaultPrefix} maxLength={5} onChange={(e) => set({ defaultPrefix: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })} className="a-input w-32 font-mono" />
@@ -50,15 +47,8 @@ export function LandingSettingsForm({ initial }: { initial: LandingSettings }) {
               <span className={`size-5 rounded-full bg-white shadow transition ${c.floatingButtons ? "translate-x-5.5" : "translate-x-0.5"}`} />
             </button>
           </div>
-          <div className={`grid gap-4 sm:grid-cols-2 ${c.floatingButtons ? "" : "opacity-60"}`}>
-            <label className="block">
-              <span className="a-label">Call number</span>
-              <input value={c.contactPhone} inputMode="tel" placeholder="01XXXXXXXXX" onChange={(e) => set({ contactPhone: e.target.value })} className="a-input font-mono" />
-            </label>
-            <label className="block">
-              <span className="a-label">WhatsApp (with 880)</span>
-              <input value={c.whatsapp} inputMode="tel" placeholder="8801XXXXXXXXX" onChange={(e) => set({ whatsapp: e.target.value })} className="a-input font-mono" />
-            </label>
+          <div className={c.floatingButtons ? "" : "opacity-60"}>
+            <BusinessNote items={[{ label: "Call number", value: c.contactPhone }, { label: "WhatsApp", value: c.whatsapp }]} />
           </div>
         </section>
       </div>

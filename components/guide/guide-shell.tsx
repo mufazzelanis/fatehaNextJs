@@ -5,6 +5,7 @@ import { queryOne } from "@/lib/db";
 import { LANDING_TAG } from "@/lib/data/landings";
 import { enabledGuides, GUIDE_HREF, prettyPhone, type GuideKey } from "@/lib/guides";
 import { getGuideContent } from "@/lib/data/guides";
+import { getBusinessProfile } from "@/lib/data/business";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { GuideImage } from "./guide-image";
 import { ImageZoom } from "./image-zoom";
@@ -37,10 +38,11 @@ function PhoneIcon() {
  * Large type throughout — many readers are older.
  */
 export async function GuideShell({ current, children }: { current: GuideKey; children: ReactNode }) {
-  const [order, content] = await Promise.all([orderHref(), getGuideContent()]);
+  const [order, content, biz] = await Promise.all([orderHref(), getGuideContent(), getBusinessProfile()]);
   const GUIDES = enabledGuides(content);
   const GUIDE_PRODUCT = content.product;
-  const GUIDE_PHONES = content.phones;
+  // Expert numbers of the guide pages; none set → the business numbers (Admin → Business Info).
+  const GUIDE_PHONES = content.phones.length ? content.phones : [biz.phone, biz.phone2].filter(Boolean);
   const others = GUIDES.filter((g) => g.href !== GUIDE_HREF[current]);
   return (
     <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c] wrap-break-word">
@@ -122,7 +124,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
       </section>}
 
       <ImageZoom />
-      <LandingFooter name="Fatehabd" />
+      <LandingFooter name={biz.name} />
     </div>
   );
 }

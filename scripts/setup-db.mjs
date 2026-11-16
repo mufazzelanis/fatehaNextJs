@@ -177,5 +177,39 @@ try {
   console.warn("! Could not fill ad set / ad on older orders:", e.message);
 }
 
+// Combo order page (landing type "order", 1 / 2 / 3-jar packages): created once as a draft so Admin → Combo
+// Order Page has something to edit. Delivery zones and order prefix are copied from the first landing page.
+try {
+  const [[exists]] = await conn.query(`SELECT id FROM landing_pages WHERE content LIKE '%"pageType":"order"%' LIMIT 1`);
+  if (!exists) {
+    const [[src]] = await conn.query("SELECT product_id, checkout, order_prefix FROM landing_pages WHERE product_id IS NOT NULL ORDER BY id LIMIT 1");
+    const [[dento]] = await conn.query("SELECT id FROM products WHERE is_active = 1 AND (name LIKE '%ডেন্টোকেয়ার%' OR name LIKE '%dento%') ORDER BY id LIMIT 1");
+    const productId = dento?.id ?? src?.product_id ?? null;
+    if (productId) {
+      let checkout = {};
+      try { checkout = JSON.parse(src?.checkout || "{}"); } catch {}
+      checkout.packages = {
+        enabled: true, title: "প্যাকেজ বেছে নিন", defaultId: "p2",
+        items: [
+          { id: "p1", qty: 1, title: "১টি জার", subtitle: "নিয়মিত ব্যবহারে প্রায় ১ মাস", price: 0, badge: "", freeDelivery: false },
+          { id: "p2", qty: 2, title: "২টি জারের কম্বো", subtitle: "প্রায় ২ মাসের কোর্স", price: 0, badge: "জনপ্রিয়", freeDelivery: false },
+          { id: "p3", qty: 3, title: "৩টি জারের কম্বো", subtitle: "প্রায় ৩ মাসের পূর্ণ কোর্স", price: 0, badge: "সবচেয়ে সাশ্রয়ী", freeDelivery: false },
+        ],
+      };
+      let slug = "order-now";
+      const [[taken]] = await conn.query("SELECT id FROM landing_pages WHERE slug = ?", [slug]);
+      if (taken) slug = `combo-order-${Date.now().toString(36)}`;
+      await conn.query(
+        `INSERT INTO landing_pages (slug, name, status, product_id, content, checkout, order_prefix, seo_title)
+         VALUES (?, 'Combo Order Page', 'draft', ?, ?, ?, ?, 'অর্ডার করুন — কম্বো অফার')`,
+        [slug, productId, JSON.stringify({ pageType: "order" }), JSON.stringify(checkout), src?.order_prefix || "DC"],
+      );
+      console.log(`✔ Combo order page created as a draft at /${slug} (set prices in Admin → Combo Order Page)`);
+    }
+  }
+} catch (e) {
+  console.warn("! Could not create the combo order page:", e.message);
+}
+
 await conn.end();
 console.log("\nAll done. Run `npm run dev` and open http://localhost:3000");

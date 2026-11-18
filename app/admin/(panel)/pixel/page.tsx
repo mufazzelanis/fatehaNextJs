@@ -83,6 +83,8 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
   const page = Math.max(Number(one("page")) || 1, 1);
   const ipFilter = /^[0-9a-fA-F.:]{2,45}$/.test(one("ip").trim()) ? one("ip").trim() : "";
   const deviceFilter = (DEVICE_FILTERS as readonly string[]).includes(one("device")) ? (one("device") as DeviceFilter) : "";
+  // Pixel / dataset ID — full, or the first digits.
+  const pixelFilter = /^\d{3,20}$/.test(one("pixel").trim()) ? one("pixel").trim() : "";
   const config = await getMarketingConfig();
   // While testing, count test events too so the numbers move; otherwise only real traffic.
   const testFilter = config.testEventCode ? "1 = 1" : "is_test = 0";
@@ -108,6 +110,13 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
   }
   if (deviceFilter === "human") where.push(`${deviceKindSql(UA)} <> 'bot'`);
   else if (deviceFilter) { where.push(`${deviceKindSql(UA)} = ?`); params.push(deviceFilter); }
+  // Events per pixel are counted with every filter except the pixel one, so the chips show the choices.
+  const wherePixelless = `WHERE ${where.join(" AND ")}`;
+  const paramsPixelless = [...params];
+  if (pixelFilter) {
+    where.push("(l.pixel_id = ? OR l.pixel_id LIKE ?)");
+    params.push(pixelFilter, `${pixelFilter}%`);
+  }
   const whereSql = `WHERE ${where.join(" AND ")}`;
 
   const [stats, byEvent, rows, retryable, daily, unsent, logCount] = await Promise.all([
@@ -144,17 +153,20 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
   const botEvents = Number(logCount?.bots ?? 0);
   // How many events each IP has under the current filters — for the IPs on this page, and the busiest IPs overall.
   const pageIps = [...new Set(rows.map((r) => r.client_ip).filter((x): x is string => !!x))];
-  const [ipCounts, topIps] = await Promise.all([
+  const [ipCounts, topIps, pixelCounts] = await Promise.all([
     pageIps.length
       ? query<{ ip: string; n: number }>(
           `SELECT ${IP} ip, COUNT(*) n ${LOG_FROM} ${whereSql} AND ${IP} IN (${pageIps.map(() => "?").join(",")}) GROUP BY ip`, [...params, ...pageIps])
       : Promise.resolve([]),
     query<{ ip: string; n: number; kind: string }>(
       `SELECT ${IP} ip, COUNT(*) n, MAX(${deviceKindSql(UA)}) kind ${LOG_FROM} ${whereSql} AND ${IP} IS NOT NULL GROUP BY ip ORDER BY n DESC LIMIT 8`, params),
+    query<{ pixel_id: string; n: number; failed: number }>(
+      `SELECT l.pixel_id, COUNT(*) n, SUM(l.success = 0) failed ${LOG_FROM} ${wherePixelless} AND l.pixel_id IS NOT NULL
+       GROUP BY l.pixel_id ORDER BY n DESC LIMIT 12`, paramsPixelless),
   ]);
   const ipCount = new Map(ipCounts.map((r) => [r.ip, Number(r.n)]));
   const logPages = Math.max(Math.ceil(logTotal / LOG_PER_PAGE), 1);
-  const hasLogFilters = !!(eventFilter || fromDate || toDate || timeSlot || failedOnly || ipFilter || deviceFilter);
+  const hasLogFilters = !!(eventFilter || fromDate || toDate || timeSlot || failedOnly || ipFilter || deviceFilter || pixelFilter);
 
   const byDay = new Map(daily.map((d) => [d.day, d]));
   const series: DayCount[] = Array.from({ length: 7 }, (_, i) => {
@@ -202,9 +214,9 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
     },
   ];
 
-  type LogParams = { log?: string; event?: string; from?: string; to?: string; time?: string; ip?: string; device?: string; page?: number };
+  type LogParams = { log?: string; event?: string; from?: string; to?: string; time?: string; ip?: string; device?: string; pixel?: string; page?: number };
   const filterHref = (over: LogParams) => {
-    const cur: LogParams = { log: failedOnly ? "failed" : "", event: eventFilter, from: fromDate, to: toDate, time: timeSlot?.id ?? "", ip: ipFilter, device: deviceFilter, page: 1 };
+    const cur: LogParams = { log: failedOnly ? "failed" : "", event: eventFilter, from: fromDate, to: toDate, time: timeSlot?.id ?? "", ip: ipFilter, device: deviceFilter, pixel: pixelFilter, page: 1 };
     const merged = { ...cur, ...over };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v && !(k === "page" && v === 1)) p.set(k, String(v));
@@ -344,7 +356,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
               );
             })}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto] xl:items-end">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[repeat(7,minmax(0,1fr))_auto] xl:items-end">
             <label className="block"><span className="a-label">From</span><input type="date" name="from" defaultValue={fromDate} min={bdDate(LOG_DAYS)} max={bdDate(0)} className="a-input" /></label>
             <label className="block"><span className="a-label">To</span><input type="date" name="to" defaultValue={toDate} min={bdDate(LOG_DAYS)} max={bdDate(0)} className="a-input" /></label>
             <label className="block">
@@ -362,6 +374,13 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
               </select>
             </label>
             <label className="block">
+              <span className="a-label">Pixel ID</span>
+              <input name="pixel" defaultValue={pixelFilter} list="pixel-ids" placeholder="e.g. 1278370771124460" inputMode="numeric" autoComplete="off" className="a-input font-mono" />
+              <datalist id="pixel-ids">
+                {[...pixelLabel].map(([pid, label]) => <option key={pid} value={pid}>{label}</option>)}
+              </datalist>
+            </label>
+            <label className="block">
               <span className="a-label">IP address</span>
               <input name="ip" defaultValue={ipFilter} placeholder="e.g. 103.88.12.40" inputMode="decimal" autoComplete="off" className="a-input font-mono" />
             </label>
@@ -377,6 +396,23 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
               {hasLogFilters && <Link href="/admin/pixel#log" className="a-btn-outline">Clear</Link>}
             </div>
           </div>
+          {pixelCounts.length > 1 || pixelFilter ? (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Pixels</span>
+              {pixelCounts.map((p) => {
+                const active = pixelFilter === p.pixel_id;
+                return (
+                  <Link key={p.pixel_id} href={filterHref({ pixel: active ? "" : p.pixel_id })} title={active ? "Show all pixels" : `Show only ${p.pixel_id}`}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs ring-1 ring-inset transition ${active ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"}`}>
+                    <span className="font-medium">{pixelLabel.get(p.pixel_id) || "Other pixel"}</span>
+                    <span className={`font-mono ${active ? "text-white/70" : "text-slate-400"}`}>{p.pixel_id}</span>
+                    <span className={`rounded px-1 font-semibold tabular-nums ${active ? "bg-white/20" : "bg-slate-100 text-slate-600"}`}>{Number(p.n)}</span>
+                    {Number(p.failed) > 0 && <span className={`rounded px-1 font-semibold tabular-nums ${active ? "bg-rose-400/40" : "bg-rose-50 text-rose-700"}`} title="failed">{Number(p.failed)} ✕</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
           {topIps.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Top IPs</span>
@@ -399,7 +435,7 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
             text={hasLogFilters ? "Try another date, time or event." : config.capiEnabled ? "Events appear here as visitors browse and order." : "Turn on the Conversions API to start sending events."} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] text-sm">
+            <table className="w-full min-w-280 text-sm">
               <thead className="bg-slate-50/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-2.5 font-medium">Time</th>
@@ -422,7 +458,12 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
                       <p className="mt-1 max-w-52 truncate font-mono text-[11px] text-slate-400" title={r.event_id}>{r.event_id}</p>
                     </td>
                     <td className="px-3 py-2.5 text-xs">
-                      {r.pixel_id ? <><span className="text-slate-700">{pixelLabel.get(r.pixel_id) || "—"}</span><p className="font-mono text-slate-400">{r.pixel_id}</p></> : <span className="text-slate-300">—</span>}
+                      {r.pixel_id ? (
+                        <Link href={filterHref({ pixel: r.pixel_id })} className="group block" title="Show only this pixel">
+                          <span className="text-slate-700 group-hover:text-brand-700">{pixelLabel.get(r.pixel_id) || "—"}</span>
+                          <p className="font-mono text-slate-400 group-hover:text-brand-700 group-hover:underline">{r.pixel_id}</p>
+                        </Link>
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-3 py-2.5">
                       {r.order_id ? <Link href={`/admin/orders/${r.order_id}`} className="text-brand-700 hover:underline">#{r.order_no ?? r.order_id}</Link> : <span className="text-slate-300">—</span>}

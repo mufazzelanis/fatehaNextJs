@@ -97,9 +97,22 @@ if (products.length === 0) {
   await conn.query(
     `INSERT INTO products (name, slug, weight, price, regular_price, stock, image)
      VALUES (?, ?, ?, ?, ?, ?, NULL)`,
-    ["মাশরুম ডেন্টোকেয়ার প্লাস", "mashroom-dentocare-plus", "100 gm", 750, 1200, 500],
+    ["মাশরুম ডেন্টোকেয়ার প্লাস", "mashroom-dentocare-plus", "125 gm", 750, 1200, 500],
   );
   console.log("✔ Product seeded");
+}
+
+// One-time fix (owner's instruction): Mashroom Dentocare Plus is 125 gm at ৳750. Runs once only, so a price or
+// weight changed later in Admin → Products is never overwritten by a deploy.
+{
+  const [[done]] = await conn.query("SELECT `value` FROM settings WHERE `key` = 'migr_dentocare_125gm'");
+  if (!done) {
+    const [res] = await conn.query(
+      "UPDATE products SET weight = '125 gm', price = 750 WHERE slug = 'mashroom-dentocare-plus' OR name LIKE '%ডেন্টোকেয়ার%'",
+    );
+    await conn.query("INSERT INTO settings (`key`, `value`) VALUES ('migr_dentocare_125gm', '1')");
+    if (res.affectedRows) console.log(`✔ Mashroom Dentocare Plus set to 125 gm, ৳750 (${res.affectedRows} product)`);
+  }
 }
 
 const defaults = {

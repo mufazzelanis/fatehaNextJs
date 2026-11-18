@@ -15,7 +15,7 @@ const sample = (source: string, landing: boolean): InvoiceData => ({
   address: landing ? "বাড়ি ১২, রোড ৩, মিরপুর" : "House 12, Road 3, Block B",
   area: landing ? null : "Dhanmondi, Dhaka",
   items: landing
-    ? [{ name: "মাশরুম ডেন্টোকেয়ার প্লাস (100 gm)", price: 750, qty: 2, total: 1500 }]
+    ? [{ name: "মাশরুম ডেন্টোকেয়ার প্লাস (125 gm)", price: 750, qty: 2, total: 1500 }]
     : [{ name: "Aptamil 2 Follow On Milk 800g", price: 3250, qty: 1, total: 3250 }, { name: "Aveeno Baby Daily Moisture Lotion", price: 3450, qty: 1, total: 3450 }],
   subtotal: landing ? 1500 : 6700, shipping: landing ? 100 : 60, shippingLabel: landing ? "ঢাকার বাইরে" : "Dhaka (inside)", discount: 0, total: landing ? 1600 : 6760,
   payment: landing

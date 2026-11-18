@@ -38,7 +38,7 @@ export async function QuickOrderPage({ landing: l, product, preview, settings }:
     <div className="min-h-screen bg-[#f4f8f5] pb-28 font-sans text-[#14261c] wrap-break-word 2xl:pb-0">
       {/* Header */}
       <header className="border-b border-[#1d6b4a]/10 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 2xl:max-w-[1440px]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 2xl:max-w-360">
           <span className="flex items-center gap-2.5">
             <span className="grid size-10 place-items-center rounded-xl bg-linear-to-br from-[#1d6b4a] to-[#2f9a6a] text-xl text-white shadow-sm" aria-hidden="true">🦷</span>
             <span className="font-display text-[18px] font-bold leading-tight text-[#1d6b4a]">{settings.footerName || "Fateha BD"}</span>
@@ -51,7 +51,7 @@ export async function QuickOrderPage({ landing: l, product, preview, settings }:
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-5 sm:pt-8 2xl:max-w-[1440px]">
+      <main className="mx-auto max-w-6xl px-4 pt-5 sm:pt-8 2xl:max-w-360">
         {product ? (
           <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[380px_minmax(0,1fr)]">
             {/* Product */}
@@ -64,11 +64,14 @@ export async function QuickOrderPage({ landing: l, product, preview, settings }:
                 </div>
                 <div className="lg:text-center">
                   <h1 className="font-display text-[23px] font-bold leading-snug text-[#123f2c] sm:text-[28px]">{q.title || product.name}</h1>
-                  {product.weight && <p className="text-[15px] text-[#4b6356]">{product.weight}</p>}
-                  <p className="mt-1.5 text-[16px] text-[#34503f]">
-                    {pk.enabled && cheapest < product.price ? <>প্রতিটি মাত্র <b className="text-[22px] text-[#c81e1e]">{tk(cheapest)}</b> থেকে</>
-                      : <>মূল্য <b className="text-[22px] text-[#c81e1e]">{tk(product.price)}</b></>}
-                  </p>
+                  {product.weight && <p className="text-[15px] text-[#4b6356]">ওজন: {product.weight}</p>}
+                  {/* The price of one jar first; the combo saving is a separate, smaller line. */}
+                  <p className="mt-1.5 text-[16px] text-[#34503f]">মূল্য <b className="text-[24px] text-[#c81e1e]">{tk(product.price)}</b> <span className="text-[14px]">(প্রতিটি)</span></p>
+                  {pk.enabled && cheapest < product.price && (
+                    <p className="mt-1 inline-block rounded-full bg-[#fde8e8] px-3 py-1 text-[14px] font-semibold text-[#c81e1e]">
+                      কম্বোতে কিনলে প্রতিটি পড়বে {tk(cheapest)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-4 p-4 sm:p-6">

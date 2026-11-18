@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, t
 import { createPortal } from "react-dom";
 import {
   BagIcon, BellIcon, BookIcon, BoxIcon, BriefcaseIcon, CartIcon, ChevronDownIcon, ChevronsLeftIcon, ClockIcon, EditIcon, ExternalIcon, GridIcon, MenuIcon,
-  PanelLeftIcon, PrinterIcon, PulseIcon, SearchIcon, SettingsIcon, ShieldIcon, StoreIcon, TagIcon, TargetIcon, UserIcon, UsersIcon, WalletIcon, XIcon,
+  PanelLeftIcon, PrinterIcon, PulseIcon, SearchIcon, SettingsIcon, ShieldIcon, StarIcon, StoreIcon, TagIcon, TargetIcon, UserIcon, UsersIcon, WalletIcon, XIcon,
 } from "../icons";
 
 type NavItem = { href: string; label: string; short: string; icon: typeof GridIcon; exact?: boolean; group: string; keywords?: string };
@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: "/admin/products", label: "Products", short: "Products", icon: BoxIcon, group: "Main site", keywords: "product stock price image" },
   { href: "/admin/categories", label: "Categories", short: "Categories", icon: TagIcon, group: "Main site", keywords: "category" },
   { href: "/admin/pages", label: "Pages", short: "Pages", icon: BookIcon, group: "Main site", keywords: "pages guide how to use usage ingredients dental care tips thank you pixel" },
+  { href: "/admin/reviews", label: "Reviews", short: "Reviews", icon: StarIcon, group: "Main site", keywords: "review rating customer experience testimonial approve photo video" },
   { href: "/admin/storefront", label: "Main Site Settings", short: "Site", icon: StoreIcon, group: "Main site", keywords: "storefront banner slider button color delivery charge announcement" },
   { href: "/admin/payments", label: "Payments", short: "Payments", icon: WalletIcon, group: "Main site", keywords: "bkash nagad rocket bank cod payment" },
   { href: "/admin/live-visitors", label: "Live Visitors", short: "Live", icon: PulseIcon, group: "Landing pages", keywords: "live realtime visitors traffic online now peak time click ip" },

@@ -82,11 +82,11 @@ export function BuyBox({ product: p }: { product: CardProduct }) {
       )}
       <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
         <button type="button" data-track="order" disabled={soldOut} onClick={() => add(false)}
-          className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-2 font-semibold transition hover:brightness-95 active:scale-[0.98] disabled:bg-slate-100 disabled:text-slate-400 ${cartBtn}`}>
+          className={`cta-shine inline-flex h-12 min-w-0 items-center justify-center gap-2 px-2 font-semibold transition hover:brightness-95 disabled:bg-slate-100 disabled:text-slate-400 ${cartBtn}`}>
           <BagIcon className="size-5 shrink-0" /> <span className="truncate">{b.cart.label}</span>
         </button>
         <button type="button" data-track="order" disabled={soldOut} onClick={() => add(true)}
-          className={`inline-flex h-12 min-w-0 items-center justify-center px-2 font-bold transition hover:brightness-95 active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-600 disabled:shadow-none ${orderBtn}`}>
+          className={`cta-fx inline-flex h-12 min-w-0 items-center justify-center px-2 font-bold transition disabled:bg-slate-200 disabled:text-slate-600 disabled:shadow-none ${orderBtn}`}>
           <span className="truncate">{b.order.label}</span>
         </button>
         <button type="button" onClick={() => toggleWish({ id: p.id, slug: p.slug, name: p.name, price: p.price, image: p.image })}

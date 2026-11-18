@@ -84,7 +84,7 @@ export function CartDrawer({ freeDeliveryOver }: { freeDeliveryOver: number }) {
               <p className="mt-1 text-xs text-slate-400">Delivery charge is calculated at checkout.</p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <Link href="/cart" onClick={closeDrawer} className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 font-semibold text-ink hover:bg-slate-50">View cart</Link>
-                <Link href="/checkout" onClick={closeDrawer} className="inline-flex h-12 items-center justify-center rounded-xl bg-fb-500 font-semibold text-white shadow-lg shadow-fb-500/25 hover:bg-fb-600">Checkout</Link>
+                <Link href="/checkout" onClick={closeDrawer} className="cta-shine inline-flex h-12 items-center justify-center rounded-xl bg-fb-500 font-semibold text-white shadow-lg shadow-fb-500/25 hover:bg-fb-600">Checkout</Link>
               </div>
             </div>
           </>

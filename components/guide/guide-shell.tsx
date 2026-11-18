@@ -11,7 +11,7 @@ import { GuideImage } from "./guide-image";
 import { ImageZoom } from "./image-zoom";
 
 /** The live landing page for the product, so "অর্ডার করুন" always points somewhere real. */
-async function orderHref() {
+export async function orderHref() {
   "use cache";
   cacheTag(LANDING_TAG);
   cacheLife("hours");
@@ -37,13 +37,14 @@ function PhoneIcon() {
  * then "talk to an expert" (call buttons), an order button and links to the other guides.
  * Large type throughout — many readers are older.
  */
-export async function GuideShell({ current, children }: { current: GuideKey; children: ReactNode }) {
+export async function GuideShell({ current, children }: { current: GuideKey | "reviews"; children: ReactNode }) {
   const [order, content, biz] = await Promise.all([orderHref(), getGuideContent(), getBusinessProfile()]);
   const GUIDES = enabledGuides(content);
   const GUIDE_PRODUCT = content.product;
   // Expert numbers of the guide pages; none set → the business numbers (Admin → Business Info).
   const GUIDE_PHONES = content.phones.length ? content.phones : [biz.phone, biz.phone2].filter(Boolean);
-  const others = GUIDES.filter((g) => g.href !== GUIDE_HREF[current]);
+  const here = current === "reviews" ? "/reviews" : GUIDE_HREF[current];
+  const others = GUIDES.filter((g) => g.href !== here);
   return (
     <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c] wrap-break-word">
       <header className="sticky top-0 z-30 border-b border-[#1d6b4a]/10 bg-white/95 backdrop-blur">
@@ -57,7 +58,7 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
           </Link>
           <nav aria-label="গাইড" className="-mx-1 flex w-full gap-1.5 overflow-x-auto px-1 pb-0.5 sm:w-auto [&::-webkit-scrollbar]:hidden">
             {GUIDES.map((g) => {
-              const active = g.href === GUIDE_HREF[current];
+              const active = g.href === here;
               return (
                 <Link key={g.href} href={g.href} aria-current={active ? "page" : undefined}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[15px] font-semibold transition ${
@@ -97,15 +98,15 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
               <p className="mt-1 text-[16px] text-[#4b6356]">পণ্য হাতে পেয়ে টাকা পরিশোধ করুন, সারা বাংলাদেশে।</p>
             </div>
             <Link href={order}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-[#e11d1d] px-5 py-4 text-[20px] font-bold text-white shadow-[0_8px_20px_-6px_rgb(225_29_29/0.6)] transition hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98]">
-              অর্ডার করতে ক্লিক করুন <span aria-hidden="true">→</span>
+              className="cta-fx flex items-center justify-center gap-2 rounded-2xl bg-[#e11d1d] px-5 py-4 text-[20px] font-bold text-white shadow-[0_8px_20px_-6px_rgb(225_29_29/0.6)] transition hover:-translate-y-0.5">
+              অর্ডার করতে ক্লিক করুন <span aria-hidden="true" className="cta-arrow">→</span>
             </Link>
           </div>
         </div>
       </section>
 
       {/* Other guides */}
-      {others.length > 0 && <section className="px-4 pb-12 pt-2">
+      <section className="px-4 pb-12 pt-2">
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-3 font-display text-[20px] font-bold text-[#14261c]">আরও জানুন</h2>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -119,9 +120,19 @@ export async function GuideShell({ current, children }: { current: GuideKey; chi
                 </span>
               </Link>
             ))}
+            {current !== "reviews" && (
+              <Link href="/reviews"
+                className="group flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-amber-200 transition hover:-translate-y-0.5 hover:shadow-md">
+                <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-amber-50 text-3xl" aria-hidden="true">⭐</span>
+                <span className="min-w-0">
+                  <span className="block font-display text-[19px] font-bold text-[#1d6b4a] group-hover:underline">গ্রাহকদের রিভিউ</span>
+                  <span className="block text-[15px] text-[#4b6356]">অন্যদের অভিজ্ঞতা পড়ুন, নিজের অভিজ্ঞতা শেয়ার করুন</span>
+                </span>
+              </Link>
+            )}
           </div>
         </div>
-      </section>}
+      </section>
 
       <ImageZoom />
       <LandingFooter name={biz.name} />

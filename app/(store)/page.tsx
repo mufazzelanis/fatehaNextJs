@@ -125,7 +125,7 @@ export default async function HomePage() {
               <p className="mt-1 text-sm text-white/75">Cash on Delivery everywhere in Bangladesh · bKash · Nagad · Rocket · Bank</p>
             </div>
           </div>
-          <Link href="/shop" className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-fb-700 px-6 font-semibold transition hover:bg-fb-600">Start shopping <ArrowRightIcon className="size-4" /></Link>
+          <Link href="/shop" className="cta-shine inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-fb-700 px-6 font-semibold transition hover:bg-fb-600">Start shopping <ArrowRightIcon className="cta-arrow size-4" /></Link>
         </div>
       </section>
 

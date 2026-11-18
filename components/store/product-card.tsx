@@ -48,7 +48,7 @@ export function CardActions({ product: p, onOrder }: { product: CardProduct; onO
     </button>
   );
   const orderFull = (
-    <button type="button" data-track="order" onClick={order} className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center px-2 text-[13px] font-bold sm:text-sm ${orderBtn} ${press}`}>
+    <button type="button" data-track="order" onClick={order} className={`cta-shine inline-flex h-10 min-w-0 flex-1 items-center justify-center px-2 text-[13px] font-bold sm:text-sm ${orderBtn} ${press}`}>
       <span className="truncate">{b.order.label}</span>
     </button>
   );

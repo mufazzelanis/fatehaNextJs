@@ -65,7 +65,7 @@ export function LandingExtras({ landingId, preview, phone, whatsapp, orderBar }:
         <div inert={!showBar}
           className={`fixed inset-x-0 bottom-0 z-40 border-t border-black/5 bg-white/95 px-3 pt-2.5 shadow-[0_-8px_24px_-8px_rgb(0_0_0/0.25)] backdrop-blur transition-transform duration-300 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:hidden ${showBar ? "translate-y-0" : "translate-y-full"}`}>
           <a href="#order" data-track="sticky" style={{ backgroundColor: orderBar.backgroundColor, color: orderBar.color }}
-            className="flex h-[62px] items-center justify-between gap-3 rounded-2xl pl-5 pr-2 font-bold shadow-md active:scale-[0.98]">
+            className="cta-fx flex h-[62px] items-center justify-between gap-3 rounded-2xl pl-5 pr-2 font-bold shadow-md">
             <span className="text-[20px] leading-tight">{orderBar.text}</span>
             <span className="rounded-xl bg-white/95 px-3 py-2 text-[19px] font-extrabold tabular-nums text-[#111]">{orderBar.price}</span>
           </a>

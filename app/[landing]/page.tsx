@@ -22,12 +22,11 @@ import { videoEmbed, type Block, type SectionKey } from "@/lib/content";
 function OrderButton({ color, text }: { color: string; text: string }) {
   return (
     <a href="#order" data-track="order"
-      className="group relative mx-auto flex w-full max-w-[380px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl px-6 py-4 text-[20px] font-bold leading-tight shadow-[0_8px_20px_-6px_rgb(0_0_0/0.35)] ring-4 ring-white/70 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] sm:inline-flex sm:w-auto sm:rounded-[14px] sm:px-8 sm:py-3.5 sm:text-[18px]"
+      className="cta-fx group mx-auto flex w-full max-w-[380px] items-center justify-center gap-2.5 rounded-2xl px-6 py-4 text-[20px] font-bold leading-tight shadow-[0_8px_20px_-6px_rgb(0_0_0/0.35)] ring-4 ring-white/70 transition duration-200 hover:-translate-y-0.5 sm:inline-flex sm:w-auto sm:rounded-[14px] sm:px-8 sm:py-3.5 sm:text-[18px]"
       style={readableButton(color)}>
-      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shine bg-linear-to-r from-transparent via-white/35 to-transparent motion-reduce:hidden" />
       <CartIcon />
       <span className="relative">{text}</span>
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="relative shrink-0 transition group-hover:translate-x-1"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="cta-arrow relative shrink-0"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
     </a>
   );
 }

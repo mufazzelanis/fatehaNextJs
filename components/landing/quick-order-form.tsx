@@ -174,7 +174,7 @@ export function QuickOrderForm({ product, config, landingId }: { product: Produc
         {state.error && <p role="alert" className="mt-3 rounded-xl bg-[#fdf2f0] px-3 py-2.5 text-[16px] font-semibold text-[#b42318] ring-1 ring-[#f5c2b8]">{state.error}</p>}
 
         <button type="submit" data-track="submit" disabled={pending || outOfStock}
-          className="mt-4 flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 font-sans text-[21px] font-bold text-white shadow-[0_10px_25px_-8px_rgb(0_0_0/0.45)] transition hover:brightness-105 active:scale-[0.99] disabled:opacity-70"
+          className="cta-fx mt-4 flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 font-sans text-[21px] font-bold text-white shadow-[0_10px_25px_-8px_rgb(0_0_0/0.45)] transition disabled:opacity-70"
           style={{ backgroundColor: accent }}>
           {pending ? <><Spinner className="size-5" /> অর্ডার হচ্ছে…</> : outOfStock ? "স্টক শেষ" : <>{config.buttonText} · {tk(total)}</>}
         </button>
@@ -189,9 +189,9 @@ export function QuickOrderForm({ product, config, landingId }: { product: Produc
             <p className="text-[22px] font-extrabold tabular-nums leading-none text-[#14261c]">{tk(total)}</p>
           </div>
           <button type="submit" disabled={pending || outOfStock}
-            className="ml-auto flex min-h-14 flex-1 items-center justify-center gap-2 rounded-2xl px-4 font-sans text-[19px] font-bold text-white shadow-md active:scale-[0.98] disabled:opacity-70"
+            className="cta-fx ml-auto flex min-h-14 flex-1 items-center justify-center gap-2 rounded-2xl px-4 font-sans text-[19px] font-bold text-white shadow-md disabled:opacity-70"
             style={{ backgroundColor: accent }}>
-            {pending ? <Spinner className="size-5" /> : "অর্ডার করুন →"}
+            {pending ? <Spinner className="size-5" /> : <>অর্ডার করুন <span aria-hidden="true" className="cta-arrow">→</span></>}
           </button>
         </div>
       </div>

@@ -100,6 +100,33 @@
   }
 }
 
+/* Order buttons (.cta-fx / .cta-shine) — `scale`/`translate` properties so they combine with Tailwind's hover lift. */
+@keyframes cta-shine {
+  0% { background-position: 130% 0; }
+  55%, 100% { background-position: -30% 0; }
+}
+@keyframes cta-breathe {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.025; }
+}
+@keyframes cta-ring {
+  0% { box-shadow: 0 0 0 0 var(--cta-ring, rgb(225 29 29 / 0.45)); }
+  70%, 100% { box-shadow: 0 0 0 14px rgb(225 29 29 / 0); }
+}
+@keyframes cta-nudge {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 5px 0; }
+}
+/* Reviews strip on /reviews */
+@keyframes reviews-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.reviews-track {
+  animation: reviews-scroll var(--reviews-speed, 60s) linear infinite;
+}
+.reviews-strip:hover .reviews-track, .reviews-strip:focus-within .reviews-track { animation-play-state: paused; }
+
 html {
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
@@ -167,6 +194,51 @@ body {
   .a-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-60;
   }
+  /* Order / call-to-action buttons: shine sweep + soft pulse ring + gentle breathe + arrow nudge + press feedback.
+     Works on top of the button's own colours. Ring colour: [--cta-ring:rgb(...)]. Lighter version: .cta-shine (shine only). */
+  .cta-fx, .cta-shine {
+    position: relative;
+    isolation: isolate;
+  }
+  .cta-fx::before, .cta-shine::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.42) 50%, transparent 62%) no-repeat;
+    background-size: 260% 100%;
+    animation: cta-shine 3.2s ease-in-out infinite;
+  }
+  .cta-fx {
+    animation: cta-breathe 2.4s ease-in-out infinite;
+  }
+  .cta-fx::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    border-radius: inherit;
+    pointer-events: none;
+    animation: cta-ring 2.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  }
+  .cta-fx:hover, .cta-fx:focus-visible {
+    animation: none;
+    filter: brightness(1.08) saturate(1.05);
+  }
+  .cta-fx:hover::before, .cta-shine:hover::before { animation-duration: 1.1s; }
+  .cta-fx:active, .cta-shine:active {
+    animation: none;
+    scale: 0.97;
+    transition: scale 0.08s;
+  }
+  .cta-fx .cta-arrow, .cta-shine .cta-arrow {
+    display: inline-block;
+    animation: cta-nudge 1.3s ease-in-out infinite;
+  }
+  .cta-fx:disabled, .cta-fx[aria-disabled="true"] { animation: none; }
+  .cta-fx:disabled::before, .cta-fx:disabled::after, .cta-shine:disabled::before { display: none; }
   .a-btn-outline {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-60;
   }

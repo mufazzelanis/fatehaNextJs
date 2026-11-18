@@ -66,7 +66,7 @@ export function HeroSlider({ slides, art }: { slides: HeroSlide[]; art: string[]
                   <h2 className={`mt-2.5 line-clamp-3 text-[21px] font-extrabold leading-[1.12] tracking-tight drop-shadow-sm sm:mt-4 sm:text-4xl lg:text-5xl ${enter} delay-75`}>{s.title}</h2>
                   <p className={`mt-2 line-clamp-2 max-w-md text-[12.5px] leading-relaxed text-white/85 sm:mt-3 sm:line-clamp-none sm:text-base ${enter} delay-150`}>{s.subtitle}</p>
                   <Link href={s.link}
-                    className={`group/cta mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-white pl-4 pr-1.5 text-[13px] font-bold text-ink shadow-lg shadow-black/15 transition hover:shadow-xl sm:mt-6 sm:h-12 sm:pl-6 sm:text-sm ${enter} delay-200`}>
+                    className={`cta-shine group/cta mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-white pl-4 pr-1.5 text-[13px] font-bold text-ink shadow-lg shadow-black/15 transition hover:shadow-xl sm:mt-6 sm:h-12 sm:pl-6 sm:text-sm ${enter} delay-200`}>
                     {s.cta}
                     <span className="grid size-7 place-items-center rounded-full bg-ink text-white transition group-hover/cta:translate-x-0.5 sm:size-9"><ArrowRightIcon className="size-3.5 sm:size-4" /></span>
                   </Link>

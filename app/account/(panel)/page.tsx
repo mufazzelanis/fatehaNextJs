@@ -44,7 +44,7 @@ async function Orders() {
         <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="font-display text-xl font-bold text-slate-900">এখনো কোনো অর্ডার নেই</p>
           <p className="mt-2 text-slate-600">মাশরুম ডেন্টোকেয়ার প্লাস অর্ডার করে দাঁতের যত্ন শুরু করুন।</p>
-          <Link href="/shop" className="btn-primary mt-6">এখনই অর্ডার করুন <ArrowRightIcon className="size-5" /></Link>
+          <Link href="/shop" className="btn-primary cta-fx mt-6">এখনই অর্ডার করুন <ArrowRightIcon className="cta-arrow size-5" /></Link>
         </div>
       ) : (
         <div className="mt-6 space-y-4">

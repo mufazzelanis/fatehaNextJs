@@ -86,6 +86,7 @@ export const PAGE_PERMISSION: Record<string, Permission> = {
   "/admin/products": "products.manage",
   "/admin/categories": "products.manage",
   "/admin/dealers": "dealers.view",
+  "/admin/reviews": "content.manage",
   "/admin/storefront": "content.manage",
   "/admin/payments": "settings.manage",
   "/admin/landings": "content.manage",

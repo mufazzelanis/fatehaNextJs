@@ -62,7 +62,7 @@ export const MAIN_SITE_LABEL = "Main website";
 const MAIN_SITE_ROOTS = new Set([
   "", "cart", "categories", "checkout", "contact", "faq", "products", "shop", "wishlist", "track",
   "how-to-use", "ingredients", "dental-care", "thank-you", "privacy-policy", "refund-policy", "terms-of-service", "order",
-  "account", "business", // customer & dealer pages (login, register, my orders, dealer area)
+  "reviews", "account", "business", // customer & dealer pages (login, register, my orders, dealer area)
 ]);
 
 /** Is this a public main-website page (tracked as landing 0)? The landing thank-you page (?l=slug) belongs to its landing. */

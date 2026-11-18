@@ -431,3 +431,33 @@ CREATE TABLE IF NOT EXISTS ad_labels (
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (kind, ext_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Customer reviews (/reviews): the customer's answers, then what the admin approves and shows
+CREATE TABLE IF NOT EXISTS reviews (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name           VARCHAR(80)   NOT NULL,
+  phone          VARCHAR(20)   NULL,
+  district       VARCHAR(60)   NULL,
+  age_range      VARCHAR(20)   NULL,
+  used           VARCHAR(5)    NULL,
+  duration       VARCHAR(20)   NULL,
+  experience     VARCHAR(20)   NULL,
+  liked          VARCHAR(200)  NULL,
+  story          TEXT          NULL,
+  suggestion     TEXT          NULL,
+  media          TEXT          NULL,
+  publish        VARCHAR(10)   NOT NULL DEFAULT 'internal',
+  media_ok       TINYINT(1)    NOT NULL DEFAULT 0,
+  status         VARCHAR(10)   NOT NULL DEFAULT 'pending',
+  featured       TINYINT(1)    NOT NULL DEFAULT 0,
+  rating         TINYINT UNSIGNED NOT NULL DEFAULT 5,
+  display_name   VARCHAR(80)   NULL,
+  display_text   TEXT          NULL,
+  admin_note     VARCHAR(500)  NULL,
+  ip             VARCHAR(64)   NULL,
+  user_agent     VARCHAR(300)  NULL,
+  approved_at    DATETIME      NULL,
+  created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_reviews_status (status, featured, approved_at),
+  INDEX idx_reviews_ip (ip, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

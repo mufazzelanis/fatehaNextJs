@@ -5,13 +5,14 @@ import { queryOne } from "@/lib/db";
 export async function GET() {
   const admin = await getAdmin();
   if (!admin) return Response.json({}, { status: 401 });
-  const row = await queryOne<{ pending: number; verify: number; dealers: number; low: number; drafts: number; live: number }>(
+  const row = await queryOne<{ pending: number; verify: number; dealers: number; low: number; drafts: number; live: number; reviews: number }>(
     `SELECT
        (SELECT COUNT(*) FROM orders WHERE status = 'pending') AS pending,
        (SELECT COUNT(*) FROM orders WHERE payment_status = 'pending_verification' AND status NOT IN ('cancelled','returned')) AS verify,
        (SELECT COUNT(*) FROM dealers WHERE status = 'pending') AS dealers,
        (SELECT COUNT(*) FROM products WHERE is_active = 1 AND stock <= 5) AS low,
        (SELECT COUNT(*) FROM landing_pages WHERE status = 'draft') AS drafts,
+       (SELECT COUNT(*) FROM reviews WHERE status = 'pending' AND publish <> 'internal') AS reviews,
        (SELECT COUNT(*) FROM landing_visits WHERE left_at IS NULL AND last_seen >= NOW() - INTERVAL 40 SECOND) AS live`,
   );
   const n = (v: unknown) => Number(v ?? 0);
@@ -21,6 +22,7 @@ export async function GET() {
   if (can(admin, "dealers.view") && n(row?.dealers)) badges["/admin/dealers"] = { count: n(row?.dealers), tone: "amber", title: "Dealer applications" };
   if (can(admin, "products.manage") && n(row?.low)) badges["/admin/products"] = { count: n(row?.low), tone: "amber", title: "Low stock (≤5)" };
   if (can(admin, "content.manage") && n(row?.drafts)) badges["/admin/landings"] = { count: n(row?.drafts), tone: "slate", title: "Draft landing pages" };
+  if (can(admin, "content.manage") && n(row?.reviews)) badges["/admin/reviews"] = { count: n(row?.reviews), tone: "amber", title: "Reviews waiting" };
   if (can(admin, "dashboard.view") && n(row?.live)) badges["/admin/live-visitors"] = { count: n(row?.live), tone: "live", title: "On landing pages right now" };
   return Response.json(badges, { headers: { "Cache-Control": "private, no-store" } });
 }

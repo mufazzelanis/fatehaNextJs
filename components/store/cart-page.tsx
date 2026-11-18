@@ -70,8 +70,8 @@ export function CartView({ freeDeliveryOver }: { freeDeliveryOver: number }) {
           <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-200 pt-4">
             <span className="font-bold text-ink">Subtotal</span><span className="text-2xl font-bold text-fb-700">{bdt(subtotal)}</span>
           </div>
-          <Link href="/checkout" className="mt-5 flex h-13 items-center justify-center gap-2 rounded-2xl bg-fb-500 py-3.5 font-bold text-white shadow-lg shadow-fb-500/30 hover:bg-fb-600">
-            Proceed to checkout <ArrowRightIcon className="size-5" />
+          <Link href="/checkout" className="cta-fx mt-5 flex h-13 items-center justify-center gap-2 rounded-2xl bg-fb-500 py-3.5 font-bold text-white shadow-lg shadow-fb-500/30 hover:bg-fb-600 [--cta-ring:rgb(24_119_242/0.4)]">
+            Proceed to checkout <ArrowRightIcon className="cta-arrow size-5" />
           </Link>
           <Link href="/shop" className="mt-3 block text-center text-sm font-medium text-fb-700 hover:underline">Continue shopping</Link>
         </div>

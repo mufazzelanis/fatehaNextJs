@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AGE_RANGES, DURATIONS, EXPERIENCES, LIKED, MAX_PHOTO_MB, MAX_PHOTOS, MAX_VIDEO_MB, MEDIA_CHOICES, MEDIA_PERMIT, PUBLISH, USED,
+  ratingFor,
 } from "@/lib/reviews";
+import { newEventId, track } from "@/lib/meta/pixel-client";
 
 type Errors = Record<string, string>;
 const EMOJI: Record<string, string> = { very_good: "😍", good: "😊", ok: "🙂", unhappy: "😞" };
@@ -120,6 +122,9 @@ export function ReviewForm({ districts, product }: { districts: string[]; produc
     if (v.mediaChoice === "photo") photos.forEach((p) => fd.append("photos", p));
     if (v.mediaChoice === "video" && video) fd.append("video", video);
     fd.append("website", honey.current?.value ?? "");
+    // One event ID for the browser pixel and the server (Conversions API) copy, so Meta counts the review once.
+    const eventId = newEventId("review");
+    fd.append("event_id", eventId);
 
     // XHR (not fetch) so a big video shows real upload progress.
     const xhr = new XMLHttpRequest();
@@ -131,6 +136,8 @@ export function ReviewForm({ districts, product }: { districts: string[]; produc
       try { res = JSON.parse(xhr.responseText); } catch {}
       if (res.ok) {
         setDone(true);
+        // Server already sent its copy (only for reviews it really saved) — browser pixel only here.
+        track("ReviewSubmitted", { rating: v.used === "yes" ? ratingFor(v.experience) : 5, content_category: "review" }, { eventId, serverSide: false });
         document.getElementById("review-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
       }

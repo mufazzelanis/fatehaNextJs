@@ -1,7 +1,9 @@
 // Client-safe Meta tracking types and constants.
 
-export const EVENT_NAMES = ["PageView", "ViewContent", "AddToCart", "InitiateCheckout", "Purchase", "OrderDelivered", "OrderCancelled"] as const;
+export const EVENT_NAMES = ["PageView", "ViewContent", "AddToCart", "InitiateCheckout", "Purchase", "OrderDelivered", "OrderCancelled", "ReviewSubmitted"] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
+/** Not one of Meta's standard events — sent with trackSingleCustom in the browser. */
+export const CUSTOM_EVENTS: readonly EventName[] = ["OrderDelivered", "OrderCancelled", "ReviewSubmitted"];
 
 export type PurchaseTrigger = "placed" | "confirmed" | "delivered";
 
@@ -25,4 +27,5 @@ export const EVENT_INFO: Record<EventName, string> = {
   Purchase: "Order — value, order ID, hashed phone & name",
   OrderDelivered: "Server only — when an order is marked Delivered (for audiences of real buyers)",
   OrderCancelled: "Server only — when an order is marked Cancelled (exclude fake / cancelled buyers)",
+  ReviewSubmitted: "Custom — a customer sent a review on /reviews (browser + server, hashed phone & name; audiences of happy customers)",
 };

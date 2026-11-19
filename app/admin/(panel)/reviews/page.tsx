@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { requirePermission } from "@/lib/auth";
+import { can, requirePermission } from "@/lib/auth";
+import { getPageStats } from "@/lib/data/pages";
+import { getMarketingConfig, MAX_PIXELS, readPagePixels } from "@/lib/meta/config";
+import { savePagePixels } from "@/app/actions/landing-pixels";
+import { PixelScopeForm } from "@/components/admin/pixel-scope-form";
 import { listReviews, type ReviewRow } from "@/lib/data/reviews";
 import { experienceLabel, isVideo, PUBLISH, REVIEW_FILE } from "@/lib/reviews";
 import { deleteReview, removeReviewMedia, toggleReviewFeatured } from "@/app/actions/reviews";
@@ -37,18 +41,25 @@ const mediaOf = (m: string | null): string[] => {
 };
 
 async function ReviewsAdmin({ searchParams }: PageProps<"/admin/reviews">) {
-  await requirePermission("content.manage");
+  const admin = await requirePermission("content.manage");
   await connection();
   const sp = await searchParams;
+  const canPixel = can(admin, "marketing.manage");
+  const pixelView = sp.tab === "pixel" && canPixel;
   const tab = (TABS.find((t) => t.key === sp.tab)?.key ?? "pending") as Tab;
   const page = Math.max(Number(sp.page) || 1, 1);
-  const data = await listReviews(tab, page);
+  const [data, stats, pagePixels, marketing] = await Promise.all([
+    listReviews(tab, page), getPageStats(["/reviews"]), readPagePixels(), getMarketingConfig(),
+  ]);
+  const st = stats["/reviews"];
+  const px = pagePixels.reviews;
+  const ownPixel = px.mode !== "main" && px.pixels.length > 0;
   const qs = (p: Record<string, string | number>) => `/admin/reviews?${new URLSearchParams(Object.entries({ tab, ...p }).map(([k, v]) => [k, String(v)]))}`;
 
   return (
     <>
       <PageHeader title="Reviews"
-        description="Customers write reviews on /reviews. Check each one, fix the text if needed, then approve — only approved reviews show on the page."
+        description={`Customers write reviews on /reviews. Check each one, fix the text if needed, then approve — only approved reviews show on the page. · ${st.now} on the page now · ${st.today} views today · ${st.week} in 7 days · ${st.month} in 30 days`}
         actions={<a href="/reviews" target="_blank" className="a-btn-outline">View page <ExternalIcon className="size-3.5" /></a>} />
 
       <nav className="mb-5 flex gap-1.5 overflow-x-auto pb-1" aria-label="Review status">
@@ -63,8 +74,27 @@ async function ReviewsAdmin({ searchParams }: PageProps<"/admin/reviews">) {
             </Link>
           );
         })}
+        {canPixel && (
+          <Link href="/admin/reviews?tab=pixel" aria-current={pixelView ? "page" : undefined} title="Facebook pixel & Conversions API for /reviews"
+            className={`ml-auto flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition ${pixelView ? "bg-violet-700 text-white shadow-sm" : "bg-white text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50"}`}>
+            Pixel & CAPI
+            <span className={`rounded-full px-1.5 text-xs ${pixelView ? "bg-white/20" : "bg-violet-50"}`}>{ownPixel ? (px.mode === "own" ? "own" : "own + main") : "main"}</span>
+          </Link>
+        )}
       </nav>
 
+      {pixelView ? (
+        <>
+          <p className="mb-4 rounded-xl bg-violet-50 px-4 py-3 text-sm text-violet-900 ring-1 ring-violet-100">
+            /reviews sends <b>PageView</b> and <b>ReviewSubmitted</b> (when a customer sends a review — browser + Conversions API with the same event ID, hashed phone & name).
+            {" "}{ownPixel ? <>Now: <b>{px.mode === "own" ? "own pixel only" : "own + main pixel"}</b> · <span className="font-mono">{px.pixels.map((x) => x.id).join(", ")}</span>{px.pixels.some((x) => x.token) ? " · CAPI ✓" : " · browser only (add a token for CAPI)"}</>
+              : <>Now: <b>main site pixel</b>{marketing.pixels.length ? <> · <span className="font-mono">{marketing.pixels.map((x) => x.id).join(", ")}</span></> : " — not set up yet (Admin → Facebook Pixel)"}</>}
+          </p>
+          <PixelScopeForm save={savePagePixels} target={{ name: "page", value: "reviews" }} kind="page" mode={px.mode}
+            pixels={px.pixels.map((x) => ({ id: x.id, label: x.label, hasToken: !!x.token, tokenHint: x.token ? `••••${x.token.slice(-4)}` : "" }))}
+            mainPixels={marketing.pixels.map((x) => x.id)} maxPixels={MAX_PIXELS} capiOn={marketing.capiSwitch} />
+        </>
+      ) : <>
       <details className="a-card mb-5 overflow-hidden" open={data.counts.all === 0}>
         <summary className="cursor-pointer select-none px-5 py-3.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
           ＋ Add a review yourself <span className="font-normal text-slate-500">— received by phone, Facebook or WhatsApp</span>
@@ -80,6 +110,7 @@ async function ReviewsAdmin({ searchParams }: PageProps<"/admin/reviews">) {
         </div>
       )}
       <div className="mt-5"><Pagination page={page} pages={data.pages} href={(p) => qs({ page: p })} /></div>
+      </>}
     </>
   );
 }

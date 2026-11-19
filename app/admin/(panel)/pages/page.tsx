@@ -23,7 +23,7 @@ const fmt = (n: number) => n.toLocaleString("en-IN");
 
 async function Pages() {
   const admin = await requirePermission("content.manage");
-  const paths = GUIDE_KEYS.map((k) => GUIDE_HREF[k]);
+  const paths = [...GUIDE_KEYS.map((k) => GUIDE_HREF[k]), "/reviews"];
   const [content, stats, pagePixels, marketing] = await Promise.all([getGuideContent(), getPageStats(paths), readPagePixels(), getMarketingConfig()]);
   const canPixel = can(admin, "marketing.manage");
 
@@ -95,10 +95,53 @@ async function Pages() {
             </article>
           );
         })}
+        <ReviewsCard st={stats["/reviews"]} px={pagePixels.reviews} mainPixels={marketing.pixels.map((x) => x.id)} canPixel={canPixel} />
       </div>
 
       <h2 className="mb-3 mt-8 font-medium text-slate-900">Shared settings</h2>
       <GuidesEditor initial={content} only="general" />
     </>
+  );
+}
+
+/** /reviews is managed in Admin → Reviews; shown here too so every page's pixel is in one place. */
+function ReviewsCard({ st, px, mainPixels, canPixel }: {
+  st: { now: number; today: number; week: number; month: number }; px: { mode: string; pixels: { id: string; token: string }[] }; mainPixels: string[]; canPixel: boolean;
+}) {
+  const own = px.mode !== "main" && px.pixels.length > 0;
+  return (
+    <article className="a-card flex flex-col overflow-hidden">
+      <div className="flex items-start gap-3 p-5 pb-3">
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-50 text-2xl ring-1 ring-amber-100">⭐</span>
+        <div className="min-w-0 flex-1">
+          <Link href="/admin/reviews" className="block truncate font-sans text-lg font-semibold text-slate-900 hover:text-brand-700">গ্রাহকদের রিভিউ</Link>
+          <a href="/reviews" target="_blank" className="font-mono text-xs text-brand-700 hover:underline">/reviews ↗</a>
+        </div>
+        <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Live</span>
+      </div>
+      <p className="line-clamp-2 px-5 font-sans text-sm text-slate-500">Review form + approved reviews. Approve and edit reviews in Admin → Reviews.</p>
+      <div className="mx-5 mt-4 grid grid-cols-4 gap-2 text-center">
+        {([["Now", st.now], ["Today", st.today], ["7 days", st.week], ["30 days", st.month]] as const).map(([label, n]) => (
+          <div key={label} className={`rounded-xl py-2 ${label === "Now" ? "bg-emerald-50" : "bg-slate-50"}`}>
+            <p className={`text-lg font-bold ${label === "Now" ? "text-emerald-700" : "text-slate-900"}`}>{fmt(n)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mx-5 mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs">
+        <span className="font-semibold text-slate-700">Facebook pixel: </span>
+        {own ? (
+          <span className="text-violet-700">{px.mode === "own" ? "own pixel" : "own + main pixel"} · <span className="font-mono">{px.pixels.map((x) => x.id).join(", ")}</span>
+            {px.pixels.some((x) => x.token) ? " · CAPI ✓" : " · browser only"}</span>
+        ) : (
+          <span className="text-slate-500">main site pixel{mainPixels.length ? ` (${mainPixels.join(", ")})` : " — not set up yet"}</span>
+        )}
+      </div>
+      <div className="mt-auto flex gap-2 p-5">
+        <Link href="/admin/reviews" className="a-btn flex-1 justify-center">Manage reviews</Link>
+        {canPixel && <Link href="/admin/reviews?tab=pixel" className="a-btn-outline justify-center">Pixel & CAPI</Link>}
+        <a href="/reviews" target="_blank" className="a-btn-outline justify-center px-3" aria-label="Open the reviews page"><ExternalIcon className="size-4" /></a>
+      </div>
+    </article>
   );
 }

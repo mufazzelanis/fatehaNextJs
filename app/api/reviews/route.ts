@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import sharp from "sharp";
+import { after } from "next/server";
+import { pixelsForUrl } from "@/lib/meta/config";
+import { customerUserData, sendServerEvents } from "@/lib/meta/capi";
+import { requestUserData } from "@/lib/meta/request";
 import { execute, queryOne } from "@/lib/db";
 import { clientIpFrom } from "@/lib/client-ip";
 import { normalizePhone } from "@/lib/phone";
@@ -111,12 +115,26 @@ export async function POST(request: Request) {
     }, 400);
   }
 
-  await execute(
+  const res = await execute(
     `INSERT INTO reviews (name, phone, district, age_range, used, duration, experience, liked, story, suggestion, media, publish, media_ok, rating, ip, user_agent)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [name, phone, district, age, used, used === "yes" ? duration : null, used === "yes" ? experience : null, liked.join("|") || null,
       story, suggestion || null, saved.length ? JSON.stringify(saved) : null, publish, saved.length && mediaOk ? 1 : 0,
       used === "yes" ? ratingFor(experience) : 5, ip, ua || null],
   );
+
+  // Facebook: "ReviewSubmitted" through the Conversions API, same event ID as the browser pixel (Meta counts it once).
+  // Goes to the pixels of /reviews (its own pixel if set in Admin → Reviews → Pixel & CAPI, else the main site pixel).
+  const eventId = str(fd, "event_id", 80);
+  if (/^[\w-]{8,80}$/.test(eventId)) {
+    const referer = request.headers.get("referer") ?? "";
+    const pageUrl = origin && referer.startsWith(origin + "/reviews") ? referer.split("#")[0].slice(0, 500) : `${origin ?? (process.env.SITE_URL || "https://fatehabd.com")}/reviews`;
+    const [user, pixels] = await Promise.all([requestUserData(), pixelsForUrl(pageUrl)]);
+    after(() => sendServerEvents([{
+      event_name: "ReviewSubmitted", event_id: eventId, event_source_url: pageUrl,
+      user_data: { ...customerUserData({ phone, name }), ...user },
+      custom_data: { rating: used === "yes" ? ratingFor(experience) : 5, content_category: "review", review_id: String(res.insertId) },
+    }], { pixels }));
+  }
   return reply({ ok: true });
 }

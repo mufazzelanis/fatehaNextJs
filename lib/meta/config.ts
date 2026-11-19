@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { query, queryOne } from "../db";
-import { GUIDE_HREF, GUIDE_KEYS, type GuideKey } from "../guides";
+import { PIXEL_PAGE_HREF, PIXEL_PAGE_KEYS, type PixelPageKey } from "../guides";
 import { EVENT_NAMES, type EventName, type PurchaseTrigger, type PublicPixelConfig } from "./shared";
 
 export const MARKETING_TAG = "marketing";
@@ -144,22 +144,22 @@ const withMain = (scope: { mode: PixelMode; pixels: PixelEntry[] }, main: PixelE
   return [...scope.pixels, ...main.filter((p) => !seen.has(p.id))];
 };
 
-// ───────────── per-page pixels (content pages: /how-to-use, /ingredients, /dental-care)
+// ───────────── per-page pixels (content pages: /how-to-use, /ingredients, /dental-care, /thank-you, /reviews)
 
 /** settings.page_pixels = { [pageKey]: { mode, pixels } } — kept apart from the page content because it holds tokens. */
 export const PAGE_PIXELS_KEY = "page_pixels";
 export type PagePixelSetting = { mode: PixelMode; pixels: PixelEntry[] };
 
 /** Raw per-page pixel settings (server only: includes tokens). */
-export async function readPagePixels(): Promise<Record<GuideKey, PagePixelSetting>> {
+export async function readPagePixels(): Promise<Record<PixelPageKey, PagePixelSetting>> {
   const row = await queryOne<{ value: string | null }>("SELECT `value` FROM settings WHERE `key` = ?", [PAGE_PIXELS_KEY]);
   let raw: Record<string, { mode?: unknown; pixels?: unknown }> = {};
   try { raw = JSON.parse(row?.value || "{}"); } catch {}
-  return Object.fromEntries(GUIDE_KEYS.map((k) => {
+  return Object.fromEntries(PIXEL_PAGE_KEYS.map((k) => {
     const r = raw[k] ?? {};
     const mode: PixelMode = r.mode === "own" || r.mode === "both" ? r.mode : "main";
     return [k, { mode, pixels: parsePixelList(JSON.stringify(r.pixels ?? [])) }];
-  })) as Record<GuideKey, PagePixelSetting>;
+  })) as Record<PixelPageKey, PagePixelSetting>;
 }
 
 /** Any page with its own pixels: landing pages (by slug) and content pages (by path). */
@@ -170,9 +170,9 @@ export async function getPixelScopes(): Promise<PixelScope[]> {
   cacheTag(MARKETING_TAG, "landings");
   cacheLife("hours");
   const [landings, pages] = await Promise.all([getLandingPixelScopes(), readPagePixels()]);
-  const pageScopes = GUIDE_KEYS
+  const pageScopes = PIXEL_PAGE_KEYS
     .filter((k) => pages[k].mode !== "main" && pages[k].pixels.length > 0)
-    .map((k) => ({ slug: GUIDE_HREF[k].slice(1), name: GUIDE_HREF[k], mode: pages[k].mode, pixels: pages[k].pixels, landingId: null }));
+    .map((k) => ({ slug: PIXEL_PAGE_HREF[k].slice(1), name: PIXEL_PAGE_HREF[k], mode: pages[k].mode, pixels: pages[k].pixels, landingId: null }));
   return [...landings.map((l) => ({ slug: l.slug, name: l.name, mode: l.mode, pixels: l.pixels, landingId: l.landingId })), ...pageScopes];
 }
 

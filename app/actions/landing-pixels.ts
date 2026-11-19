@@ -5,7 +5,7 @@ import { execute, queryOne } from "@/lib/db";
 import { adminWith, DENIED } from "@/lib/auth";
 import { LANDING_TAG } from "@/lib/data/landings";
 import { MARKETING_TAG, MAX_PIXELS, PAGE_PIXELS_KEY, parsePixelList, readPagePixels, type PixelEntry, type PixelMode } from "@/lib/meta/config";
-import { GUIDE_HREF, GUIDE_KEYS, type GuideKey } from "@/lib/guides";
+import { PIXEL_PAGE_HREF, PIXEL_PAGE_KEYS, type PixelPageKey } from "@/lib/guides";
 import { logActivity } from "@/lib/activity";
 import type { ActionState } from "@/lib/action-state";
 
@@ -69,12 +69,12 @@ export async function saveLandingPixels(_prev: ActionState, formData: FormData):
   return { ok: true, message: "Pixel settings saved — the landing page uses them right away" };
 }
 
-/** Saves the pixels of one content page (Admin → Pages → <page> → Pixel & CAPI). */
+/** Saves the pixels of one content page (Admin → Pages → <page> → Pixel & CAPI, Admin → Reviews → Pixel & CAPI). */
 export async function savePagePixels(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await adminWith("marketing.manage");
   if (!admin) return DENIED;
-  const key = String(formData.get("page")) as GuideKey;
-  if (!GUIDE_KEYS.includes(key)) return { error: "Page not found" };
+  const key = String(formData.get("page")) as PixelPageKey;
+  if (!PIXEL_PAGE_KEYS.includes(key)) return { error: "Page not found" };
 
   const all = await readPagePixels();
   const res = readPixelForm(formData, all[key].pixels);
@@ -88,7 +88,7 @@ export async function savePagePixels(_prev: ActionState, formData: FormData): Pr
   updateTag(MARKETING_TAG);
   await logActivity({
     actor: { id: admin.id, name: admin.name }, action: "page.pixels", module: "marketing", entityType: "page", entityId: key,
-    description: `Page ${GUIDE_HREF[key]} now uses ${modeLabel(res.mode)}${res.pixels.length ? ` (${res.pixels.map((p) => p.id).join(", ")})` : ""}`,
+    description: `Page ${PIXEL_PAGE_HREF[key]} now uses ${modeLabel(res.mode)}${res.pixels.length ? ` (${res.pixels.map((p) => p.id).join(", ")})` : ""}`,
   });
   return { ok: true, message: "Pixel settings saved — the page uses them right away" };
 }

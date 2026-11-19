@@ -1,7 +1,7 @@
 // Browser side of Meta tracking. Every event fires the pixel and (when the Conversions API is on)
 // the same event on the server with a shared event ID, so Meta counts it once.
 import { trackServerEvent } from "@/app/actions/pixel";
-import type { EventName } from "./shared";
+import { CUSTOM_EVENTS, type EventName } from "./shared";
 
 type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...a: unknown[]) => void; queue?: unknown[][]; loaded?: boolean; version?: string; push?: unknown; disablePushState?: boolean };
 
@@ -96,7 +96,8 @@ export function track(name: string, params: Record<string, unknown> = {}, option
   const run = () => {
     if (!setup || setup.events[name as EventName] === false) return;
     const eventId = options.eventId ?? newEventId(name.toLowerCase());
-    if (setup.browser && window.fbq) for (const id of active ?? []) window.fbq("trackSingle", id, name, params, { eventID: eventId });
+    const method = CUSTOM_EVENTS.includes(name as EventName) ? "trackSingleCustom" : "trackSingle";
+    if (setup.browser && window.fbq) for (const id of active ?? []) window.fbq(method, id, name, params, { eventID: eventId });
     const serverAllowed = options.serverSide !== false && setup.capi && (name !== "PageView" || setup.serverPageView);
     if (serverAllowed) {
       trackServerEvent({ name, eventId, url: window.location.href, quantity: options.quantity, items: options.items, pkg: options.pkg }).catch(() => {});

@@ -319,6 +319,10 @@ export type GuideKey = (typeof GUIDE_KEYS)[number];
 export const GUIDE_HREF: Record<GuideKey, "/how-to-use" | "/ingredients" | "/dental-care" | "/thank-you"> = {
   usage: "/how-to-use", ingredients: "/ingredients", care: "/dental-care", thanks: "/thank-you",
 };
+/** Pages with their own Facebook pixel settings (Pixel & CAPI tab): the guide pages and the reviews page. */
+export const PIXEL_PAGE_KEYS = [...GUIDE_KEYS, "reviews"] as const;
+export type PixelPageKey = (typeof PIXEL_PAGE_KEYS)[number];
+export const PIXEL_PAGE_HREF: Record<PixelPageKey, string> = { ...GUIDE_HREF, reviews: "/reviews" };
 /** Pages shown in the guide tabs, "আরও জানুন" cards and the order thank-you cards (not the customer thank-you page itself). */
 const GUIDE_TAB_KEYS: GuideKey[] = ["usage", "ingredients", "care"];
 

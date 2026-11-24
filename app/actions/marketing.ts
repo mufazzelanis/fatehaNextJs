@@ -6,7 +6,7 @@ import { adminWith, DENIED } from "@/lib/auth";
 import { logActivity, MASKED, type Change } from "@/lib/activity";
 import { getMarketingConfig, MARKETING_TAG, MAX_PIXELS, type PixelEntry } from "@/lib/meta/config";
 import { EVENT_NAMES } from "@/lib/meta/shared";
-import { customerUserData, retryFailedEvents, sendServerEvents, verifyPixels, type PixelCheck } from "@/lib/meta/capi";
+import { customerUserData, retryFailedEvents, sendServerEvents, tokenErrors, verifyPixels, type PixelCheck } from "@/lib/meta/capi";
 import { requestUserData } from "@/lib/meta/request";
 import type { ActionState } from "@/lib/action-state";
 
@@ -58,6 +58,11 @@ export async function saveMarketingSettings(_prev: ActionState, formData: FormDa
   const capiOn = formData.get("fb_capi_enabled") === "on";
   if (capiOn && !pixels.some((p) => p.token)) fieldErrors.capi = "Add an access token to at least one pixel to use the Conversions API";
   if (Object.keys(fieldErrors).length) return { error: "Please fix the highlighted fields", fieldErrors };
+  // A newly typed token must work for its pixel (Facebook is asked) — a wrong token is the usual reason CAPI fails.
+  const badTokens = await tokenErrors(input.map((row, index) => ({
+    index, id: String(row.id ?? "").replace(/\s/g, ""), newToken: row.removeToken === true ? "" : String(row.token ?? "").trim(),
+  })), /^v\d+\.\d+$/.test(version) ? version : undefined);
+  if (Object.keys(badTokens).length) return { error: "Facebook refused an access token — see the pixel below", fieldErrors: badTokens };
 
   const trigger = String(formData.get("fb_purchase_trigger") ?? "placed");
   const events = Object.fromEntries(EVENT_NAMES.map((e) => [e, formData.get(`event_${e}`) === "on"]));

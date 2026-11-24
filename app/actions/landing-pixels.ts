@@ -7,6 +7,7 @@ import { LANDING_TAG } from "@/lib/data/landings";
 import { MARKETING_TAG, MAX_PIXELS, PAGE_PIXELS_KEY, parsePixelList, readPagePixels, type PixelEntry, type PixelMode } from "@/lib/meta/config";
 import { PIXEL_PAGE_HREF, PIXEL_PAGE_KEYS, type PixelPageKey } from "@/lib/guides";
 import { logActivity } from "@/lib/activity";
+import { tokenErrors } from "@/lib/meta/capi";
 import type { ActionState } from "@/lib/action-state";
 
 type Row = { id?: string; label?: string; token?: string; removeToken?: boolean };
@@ -15,7 +16,7 @@ type Row = { id?: string; label?: string; token?: string; removeToken?: boolean 
  * Reads the pixel form (mode + rows). Tokens are write-only: an empty token field keeps the saved one.
  * Returns the cleaned list, or field errors to show.
  */
-function readPixelForm(formData: FormData, saved: PixelEntry[]): { mode: PixelMode; pixels: PixelEntry[] } | ActionState {
+async function readPixelForm(formData: FormData, saved: PixelEntry[]): Promise<{ mode: PixelMode; pixels: PixelEntry[] } | ActionState> {
   const mode = String(formData.get("mode")) as PixelMode;
   if (!["main", "own", "both"].includes(mode)) return { error: "Choose which pixels this page uses" };
   let input: Row[] = [];
@@ -40,6 +41,13 @@ function readPixelForm(formData: FormData, saved: PixelEntry[]): { mode: PixelMo
   if (pixels.length > MAX_PIXELS) return { error: `Up to ${MAX_PIXELS} pixels per page` };
   if (mode !== "main" && !pixels.length) fieldErrors.pixels = "Add at least one pixel, or choose “Use the main site pixels”";
   if (Object.keys(fieldErrors).length) return { error: "Please fix the highlighted fields", fieldErrors };
+  // A newly typed token must work for its pixel (Facebook is asked) — a wrong token is the usual reason CAPI fails.
+  if (mode !== "main") {
+    const bad = await tokenErrors(input.map((row, index) => ({
+      index, id: String(row.id ?? "").replace(/\s/g, ""), newToken: row.removeToken === true ? "" : String(row.token ?? "").trim(),
+    })));
+    if (Object.keys(bad).length) return { error: "Facebook refused an access token — see the pixel below", fieldErrors: bad };
+  }
   return { mode, pixels };
 }
 
@@ -54,7 +62,7 @@ export async function saveLandingPixels(_prev: ActionState, formData: FormData):
     "SELECT id, name, slug, pixels FROM landing_pages WHERE id = ?", [landingId]);
   if (!landing) return { error: "Landing page not found" };
 
-  const res = readPixelForm(formData, parsePixelList(landing.pixels));
+  const res = await readPixelForm(formData, parsePixelList(landing.pixels));
   if (!("mode" in res)) return res;
   const { mode, pixels } = res;
 
@@ -77,7 +85,7 @@ export async function savePagePixels(_prev: ActionState, formData: FormData): Pr
   if (!PIXEL_PAGE_KEYS.includes(key)) return { error: "Page not found" };
 
   const all = await readPagePixels();
-  const res = readPixelForm(formData, all[key].pixels);
+  const res = await readPixelForm(formData, all[key].pixels);
   if (!("mode" in res)) return res;
   const next = { ...all, [key]: res };
 

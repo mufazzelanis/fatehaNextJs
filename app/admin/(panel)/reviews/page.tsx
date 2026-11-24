@@ -5,6 +5,7 @@ import { can, requirePermission } from "@/lib/auth";
 import { getPageStats } from "@/lib/data/pages";
 import { getMarketingConfig, MAX_PIXELS, readPagePixels } from "@/lib/meta/config";
 import { savePagePixels } from "@/app/actions/landing-pixels";
+import { PixelHealth, pagePixelsFor } from "@/components/admin/pixel-health";
 import { PixelScopeForm } from "@/components/admin/pixel-scope-form";
 import { listReviews, type ReviewRow } from "@/lib/data/reviews";
 import { experienceLabel, isVideo, PUBLISH, REVIEW_FILE } from "@/lib/reviews";
@@ -93,6 +94,7 @@ async function ReviewsAdmin({ searchParams }: PageProps<"/admin/reviews">) {
           <PixelScopeForm save={savePagePixels} target={{ name: "page", value: "reviews" }} kind="page" mode={px.mode}
             pixels={px.pixels.map((x) => ({ id: x.id, label: x.label, hasToken: !!x.token, tokenHint: x.token ? `••••${x.token.slice(-4)}` : "" }))}
             mainPixels={marketing.pixels.map((x) => x.id)} maxPixels={MAX_PIXELS} capiOn={marketing.capiSwitch} />
+          <div className="mt-6"><PixelHealth capiOn={marketing.capiSwitch} title="/reviews Conversions API · last 24 hours" pixels={pagePixelsFor(px.mode, px.pixels, marketing.pixels, "/reviews")} /></div>
         </>
       ) : <>
       <details className="a-card mb-5 overflow-hidden" open={data.counts.all === 0}>

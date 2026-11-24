@@ -12,6 +12,7 @@ import { listFeedback } from "@/lib/data/feedback";
 import { deleteFeedback } from "@/app/actions/feedback";
 import { dateTime } from "@/lib/format";
 import { ChevronLeftIcon, ExternalIcon } from "@/components/icons";
+import { PixelHealth, pagePixelsFor } from "@/components/admin/pixel-health";
 import { PixelScopeForm } from "@/components/admin/pixel-scope-form";
 import { GuidesEditor } from "../guides-editor";
 
@@ -72,9 +73,12 @@ async function PixelTab({ pageKey }: { pageKey: ReturnType<typeof guideKeyFromSl
   const [all, config] = await Promise.all([readPagePixels(), getMarketingConfig()]);
   const s = all[pageKey];
   return (
-    <PixelScopeForm save={savePagePixels} target={{ name: "page", value: pageKey }} kind="page" mode={s.mode}
-      pixels={s.pixels.map((x) => ({ id: x.id, label: x.label, hasToken: !!x.token, tokenHint: x.token ? `••••${x.token.slice(-4)}` : "" }))}
-      mainPixels={config.pixels.map((x) => x.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />
+    <div className="space-y-6">
+      <PixelScopeForm save={savePagePixels} target={{ name: "page", value: pageKey }} kind="page" mode={s.mode}
+        pixels={s.pixels.map((x) => ({ id: x.id, label: x.label, hasToken: !!x.token, tokenHint: x.token ? `••••${x.token.slice(-4)}` : "" }))}
+        mainPixels={config.pixels.map((x) => x.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />
+      <PixelHealth capiOn={config.capiSwitch} title="This page's Conversions API · last 24 hours" pixels={pagePixelsFor(s.mode, s.pixels, config.pixels, "This page")} />
+    </div>
   );
 }
 

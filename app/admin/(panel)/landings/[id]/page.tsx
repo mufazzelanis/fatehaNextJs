@@ -13,6 +13,7 @@ import { CopyUrl } from "../landing-forms";
 import { ContentEditor } from "./content-editor";
 import { CheckoutEditor } from "./checkout-editor";
 import { LandingSetupForm } from "./setup-form";
+import { PixelHealth, pagePixelsFor } from "@/components/admin/pixel-health";
 import { PixelScopeForm, type LandingPixelRow } from "@/components/admin/pixel-scope-form";
 import { saveLandingPixels } from "@/app/actions/landing-pixels";
 import { getMarketingConfig, MAX_PIXELS, parsePixelList, type PixelMode } from "@/lib/meta/config";
@@ -106,9 +107,15 @@ async function PixelTab({ landingId, mode }: { landingId: number; mode: string |
     queryOne<{ pixels: string | null }>("SELECT pixels FROM landing_pages WHERE id = ?", [landingId]),
     getMarketingConfig(),
   ]);
-  const pixels: LandingPixelRow[] = parsePixelList(row?.pixels).map((p) => ({
+  const own = parsePixelList(row?.pixels);
+  const pixels: LandingPixelRow[] = own.map((p) => ({
     id: p.id, label: p.label, hasToken: !!p.token, tokenHint: p.token ? "••••" + p.token.slice(-4) : "",
   }));
   const m: PixelMode = mode === "own" || mode === "both" ? mode : "main";
-  return <PixelScopeForm save={saveLandingPixels} target={{ name: "landing", value: landingId }} mode={m} pixels={pixels} mainPixels={config.pixels.map((p) => p.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />;
+  return (
+    <div className="space-y-6">
+      <PixelScopeForm save={saveLandingPixels} target={{ name: "landing", value: landingId }} mode={m} pixels={pixels} mainPixels={config.pixels.map((p) => p.id)} maxPixels={MAX_PIXELS} capiOn={config.capiSwitch} />
+      <PixelHealth capiOn={config.capiSwitch} title="This page's Conversions API · last 24 hours" pixels={pagePixelsFor(m, own, config.pixels, "This landing page")} />
+    </div>
+  );
 }

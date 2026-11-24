@@ -55,7 +55,44 @@ export function customerUserData(input: { phone?: string | null; name?: string |
   return data;
 }
 
-type GraphError = { message?: string; error_user_msg?: string; code?: number };
+type GraphError = { message?: string; error_user_msg?: string; code?: number; error_subcode?: number; type?: string };
+
+/**
+ * Facebook's errors in plain words. The common one: "Object with ID … does not exist, cannot be loaded due to
+ * missing permissions" = the access token was made for a different pixel / Business, not this pixel.
+ */
+export function explainGraphError(err: GraphError | undefined, pixelId: string, status: number | null): { message: string; tokenProblem: boolean } {
+  const raw = err?.error_user_msg || err?.message || (status ? `HTTP ${status}` : "No answer from Facebook");
+  if (err?.code === 190 || (err?.type === "OAuthException" && /access token/i.test(err?.message ?? ""))) {
+    return { tokenProblem: true, message: `Access token is invalid or expired — generate a new one in Events Manager → pixel ${pixelId} → Settings → Conversions API. (${raw})` };
+  }
+  if ((err?.code === 100 && err?.error_subcode === 33) || /does not exist, cannot be loaded due to missing permissions/i.test(raw)) {
+    return { tokenProblem: true, message: `This access token has no access to pixel ${pixelId} — it was made for another pixel or Business. Open Events Manager → select pixel ${pixelId} → Settings → Conversions API → Generate access token, and save that token here. (${raw})` };
+  }
+  if (err?.code === 10 || ((err?.code ?? 0) >= 200 && (err?.code ?? 0) < 300)) {
+    return { tokenProblem: true, message: `This access token is not allowed to send events to pixel ${pixelId} — give the system user access to this pixel (dataset) in Business Settings, or generate the token from this pixel's Conversions API settings. (${raw})` };
+  }
+  return { tokenProblem: false, message: raw };
+}
+
+export type PairCheck = { ok: boolean; tokenProblem: boolean; name?: string; lastFired?: string | null; message: string };
+
+/** Does this access token work for this pixel? (Graph API read of the pixel — the same permission sending needs.) */
+export async function checkPixelPair(apiVersion: string, pixelId: string, token: string): Promise<PairCheck> {
+  if (!token) return { ok: false, tokenProblem: false, message: "No access token — browser pixel only (no Conversions API)" };
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${apiVersion}/${pixelId}?fields=name,last_fired_time,is_unavailable&access_token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(10_000), cache: "no-store" },
+    );
+    const json = (await res.json().catch(() => ({}))) as { name?: string; last_fired_time?: string; is_unavailable?: boolean; error?: GraphError };
+    if (!res.ok) return { ok: false, ...explainGraphError(json.error, pixelId, res.status) };
+    if (json.is_unavailable) return { ok: false, tokenProblem: false, name: json.name, message: "Pixel is unavailable (disabled in Business Manager)" };
+    return { ok: true, tokenProblem: false, name: json.name, lastFired: json.last_fired_time ?? null, message: "Connected — token works for this pixel" };
+  } catch (error) {
+    return { ok: false, tokenProblem: false, message: `Could not reach Facebook (${error instanceof Error ? error.message : "network error"})` };
+  }
+}
 
 /** One POST to one pixel. Retries once on network errors and 5xx/429 responses. */
 async function postToPixel(config: MarketingConfig, pixel: PixelEntry, data: object[], testCode: string): Promise<SendResult> {
@@ -77,7 +114,7 @@ async function postToPixel(config: MarketingConfig, pixel: PixelEntry, data: obj
       const json = (await res.json().catch(() => ({}))) as { events_received?: number; fbtrace_id?: string; error?: GraphError };
       last = res.ok
         ? { ok: true, status: res.status, message: `Received: ${json.events_received ?? 0}${json.fbtrace_id ? ` · trace ${json.fbtrace_id}` : ""}` }
-        : { ok: false, status: res.status, message: json.error?.error_user_msg || json.error?.message || `HTTP ${res.status}` };
+        : { ok: false, status: res.status, message: explainGraphError(json.error, pixel.id, res.status).message };
       if (res.ok || (res.status < 500 && res.status !== 429)) return last;
     } catch (error) {
       last = { ok: false, status: null, message: error instanceof Error ? error.message : "Network error" };
@@ -170,28 +207,70 @@ export async function retryFailedEvents(): Promise<{ retried: number; succeeded:
   return { retried: rows.length, succeeded };
 }
 
-export type PixelCheck = { id: string; label: string; ok: boolean; name?: string; lastFired?: string | null; message: string };
+export type PixelCheck = { id: string; label: string; ok: boolean; name?: string; lastFired?: string | null; message: string; usedOn: string };
 
-/** Asks the Graph API whether each pixel + token pair works, and when the pixel last received an event. */
+/**
+ * Asks the Graph API whether every pixel + token pair in use works — the main site pixels and every page /
+ * landing page with its own pixels — and when each pixel last received an event.
+ */
 export async function verifyPixels(): Promise<PixelCheck[]> {
-  const config = await getMarketingConfig();
-  return Promise.all(
-    config.pixels.map(async (pixel): Promise<PixelCheck> => {
-      if (!pixel.token) return { id: pixel.id, label: pixel.label, ok: false, message: "No access token — browser pixel only" };
-      try {
-        const res = await fetch(
-          `https://graph.facebook.com/${config.apiVersion}/${pixel.id}?fields=name,last_fired_time,is_unavailable&access_token=${encodeURIComponent(pixel.token)}`,
-          { signal: AbortSignal.timeout(10_000), cache: "no-store" },
-        );
-        const json = (await res.json().catch(() => ({}))) as { name?: string; last_fired_time?: string; is_unavailable?: boolean; error?: GraphError };
-        if (!res.ok) return { id: pixel.id, label: pixel.label, ok: false, message: json.error?.error_user_msg || json.error?.message || `HTTP ${res.status}` };
-        if (json.is_unavailable) return { id: pixel.id, label: pixel.label, ok: false, name: json.name, message: "Pixel is unavailable (disabled in Business Manager)" };
-        return { id: pixel.id, label: pixel.label, ok: true, name: json.name, lastFired: json.last_fired_time ?? null, message: "Connected" };
-      } catch (error) {
-        return { id: pixel.id, label: pixel.label, ok: false, message: error instanceof Error ? error.message : "Network error" };
-      }
-    }),
+  const [config, scopes] = await Promise.all([getMarketingConfig(), getPixelScopes()]);
+  const pairs = new Map<string, { pixel: PixelEntry; usedOn: string[] }>();
+  const add = (pixel: PixelEntry, where: string) => {
+    const key = `${pixel.id}|${pixel.token}`;
+    const entry = pairs.get(key) ?? { pixel, usedOn: [] };
+    entry.usedOn.push(where);
+    pairs.set(key, entry);
+  };
+  for (const p of config.pixels) add(p, "Main site");
+  for (const s of scopes) for (const p of s.pixels) add(p, s.landingId ? `Landing “${s.name}” (/${s.slug})` : s.name);
+  return Promise.all([...pairs.values()].map(async ({ pixel, usedOn }): Promise<PixelCheck> => {
+    const r = await checkPixelPair(config.apiVersion, pixel.id, pixel.token);
+    return { id: pixel.id, label: pixel.label, ok: r.ok, name: r.name, lastFired: r.lastFired, message: r.message, usedOn: usedOn.join(", ") };
+  }));
+}
+
+/**
+ * Before saving pixels: every newly typed token is checked with Facebook. A token Facebook definitely refuses
+ * for that pixel is an error for that row; if Facebook can't be reached the token is saved (no false alarms).
+ */
+export async function tokenErrors(rows: { index: number; id: string; newToken: string }[], apiVersion?: string): Promise<Record<string, string>> {
+  const version = apiVersion ?? (await getMarketingConfig()).apiVersion;
+  const errors: Record<string, string> = {};
+  await Promise.all(rows.filter((r) => r.newToken).map(async (r) => {
+    const c = await checkPixelPair(version, r.id, r.newToken);
+    if (!c.ok && c.tokenProblem) errors[`pixel_${r.index}`] = c.message;
+  }));
+  return errors;
+}
+
+/** Last 24 hours of Conversions API results per pixel (from the event log) — for the health boxes in the admin. */
+export async function pixelHealth(ids: string[]): Promise<Record<string, { ok: number; failed: number; lastError: string | null; lastErrorAt: Date | null; lastOkAt: Date | null }>> {
+  if (!ids.length) return {};
+  const rows = await query<{ pixel_id: string; ok: number; failed: number; last_ok: Date | null; last_fail: Date | null }>(
+    `SELECT pixel_id, SUM(success = 1) ok, SUM(success = 0) failed, MAX(CASE WHEN success = 1 THEN created_at END) last_ok,
+            MAX(CASE WHEN success = 0 THEN created_at END) last_fail
+     FROM pixel_event_log WHERE is_test = 0 AND created_at >= NOW() - INTERVAL 1 DAY AND pixel_id IN (${ids.map(() => "?").join(",")})
+     GROUP BY pixel_id`, ids,
   );
+  const out: Awaited<ReturnType<typeof pixelHealth>> = {};
+  for (const id of ids) {
+    const r = rows.find((x) => x.pixel_id === id);
+    let lastError: string | null = null;
+    if (r?.last_fail) {
+      const e = await queryOne<{ response: string | null }>(
+        "SELECT response FROM pixel_event_log WHERE pixel_id = ? AND success = 0 AND is_test = 0 ORDER BY id DESC LIMIT 1", [id]);
+      lastError = e?.response ?? null;
+      // Rows logged before the plain-words messages: translate Facebook's text.
+      if (lastError && /does not exist, cannot be loaded due to missing permissions/i.test(lastError) && !lastError.startsWith("This access token")) {
+        lastError = explainGraphError({ code: 100, error_subcode: 33, message: lastError }, id, 400).message;
+      } else if (lastError && /Malformed access token|Error validating access token|Invalid OAuth access token/i.test(lastError) && !lastError.startsWith("Access token")) {
+        lastError = explainGraphError({ code: 190, message: lastError }, id, 400).message;
+      }
+    }
+    out[id] = { ok: Number(r?.ok ?? 0), failed: Number(r?.failed ?? 0), lastError, lastErrorAt: r?.last_fail ?? null, lastOkAt: r?.last_ok ?? null };
+  }
+  return out;
 }
 
 type OrderForPixel = {

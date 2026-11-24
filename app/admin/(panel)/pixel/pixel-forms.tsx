@@ -198,7 +198,7 @@ export function VerifyPanel({ disabled }: { disabled: boolean }) {
   return (
     <section className="a-card p-5">
       <h2 className="font-medium text-slate-900">Connection check</h2>
-      <p className="mb-3 mt-1 text-xs text-slate-500">Asks Facebook whether each pixel and token work, and when the pixel last received an event.</p>
+      <p className="mb-3 mt-1 text-xs text-slate-500">Asks Facebook whether every pixel + token in use works — main site, every page and landing page with its own pixel — and when each pixel last received an event.</p>
       <form action={action}>
         <button type="submit" disabled={disabled || pending} className="a-btn-outline w-full">
           {pending ? "Checking…" : "Verify connection"}
@@ -208,12 +208,14 @@ export function VerifyPanel({ disabled }: { disabled: boolean }) {
       {state.error && <p className="mt-3 text-sm text-rose-600">{state.error}</p>}
       {state.checks && (
         <ul className="mt-3 space-y-2">
+          {state.checks.length === 0 && <li className="text-sm text-slate-500">No pixels to check.</li>}
           {state.checks.map((c) => (
-            <li key={c.id} className={`rounded-lg border p-3 text-sm ${c.ok ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+            <li key={`${c.id}-${c.usedOn}`} className={`rounded-lg border p-3 text-sm ${c.ok ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
               <p className="flex items-center gap-2 font-medium text-slate-900">
                 {c.ok ? <CheckCircleIcon className="size-4 text-emerald-600" /> : <AlertIcon className="size-4 text-rose-600" />}
                 {c.name ?? c.label ?? "Pixel"} <span className="font-mono text-xs font-normal text-slate-500">{c.id}</span>
               </p>
+              <p className="mt-0.5 text-xs text-slate-600">Used on: <b className="font-medium">{c.usedOn}</b></p>
               <p className={`mt-0.5 text-xs ${c.ok ? "text-emerald-800" : "text-rose-700"}`}>{c.message}</p>
               {c.ok && (
                 <p className="mt-0.5 text-xs text-slate-500">

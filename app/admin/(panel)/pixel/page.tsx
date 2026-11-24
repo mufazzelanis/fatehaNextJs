@@ -12,6 +12,7 @@ import { DEVICE_FILTER_LABEL, DEVICE_FILTERS, DEVICE_KIND_LABEL, deviceKindSql, 
 import { ClockIcon } from "@/components/icons";
 import { EventsChart, type DayCount } from "./events-chart";
 import { PixelSettingsForm, RetryButton, TestEventForm, VerifyPanel } from "./pixel-forms";
+import { PixelHealth } from "@/components/admin/pixel-health";
 
 export const metadata = { title: "Facebook Pixel" };
 
@@ -273,7 +274,11 @@ async function Pixel({ searchParams }: Pick<PageProps<"/admin/pixel">, "searchPa
           />
         </div>
         <div className="space-y-6">
-          <VerifyPanel disabled={!config.pixels.length} />
+          <PixelHealth capiOn={config.capiSwitch} pixels={[
+            ...config.pixels.map((p) => ({ id: p.id, label: p.label, where: "Main site", hasToken: !!p.token })),
+            ...scopes.flatMap((sc) => sc.pixels.map((p) => ({ id: p.id, label: p.label, where: sc.landingId ? `Landing /${sc.slug}` : sc.name, hasToken: !!p.token }))),
+          ]} />
+          <VerifyPanel disabled={!config.pixels.length && !scopes.length} />
           <TestEventForm defaultCode={config.testEventCode} disabled={!config.capiEnabled} />
 
           <section className="a-card p-5">

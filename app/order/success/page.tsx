@@ -12,9 +12,6 @@ import { LandingFooter } from "@/components/landing/landing-footer";
 import { PurchaseEvent } from "@/components/meta/meta-pixel";
 import { getMarketingConfig } from "@/lib/meta/config";
 import { purchaseEventId } from "@/lib/meta/capi";
-import Link from "next/link";
-import { enabledGuides } from "@/lib/guides";
-import { getGuideContent } from "@/lib/data/guides";
 
 export const metadata: Metadata = { title: "অর্ডার সফল হয়েছে", robots: { index: false } };
 
@@ -49,8 +46,7 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
     month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dhaka",
   });
   const zone = zoneLabel(order);
-  const [pixel, guide] = await Promise.all([getMarketingConfig(), getGuideContent()]);
-  const GUIDES = guide.showOnThankYou ? enabledGuides(guide) : [];
+  const pixel = await getMarketingConfig();
   // Browser Purchase pairs with the server Purchase (same event ID) only when purchases are counted at checkout.
   const firePurchase = fresh && pixel.browserEnabled && pixel.events.Purchase && pixel.purchaseTrigger === "placed";
 
@@ -144,22 +140,6 @@ async function OrderSummary({ searchParams }: Pick<PageProps<"/order/success">, 
             </div>
           </section>
 
-          {/* While the parcel is on its way: how to use it, what is inside, and daily dental care. */}
-          {GUIDES.length > 0 && <section className="mt-6 rounded-2xl bg-linear-to-br from-[#e8f6ee] to-[#f3faf6] p-4 ring-1 ring-[#1d6b4a]/15 sm:p-5">
-            <p className="font-display text-[19px] font-bold text-[#1d6b4a]">পণ্য হাতে পাওয়ার আগেই জেনে নিন</p>
-            <div className="mt-3 grid gap-2.5">
-              {GUIDES.map((g) => (
-                <Link key={g.href} href={g.href} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                  <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#e8f3ec] text-2xl" aria-hidden="true">{g.icon}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-display text-[17px] font-bold text-[#1d6b4a]">{g.label}</span>
-                    <span className="block text-[14px] text-[#4b6356]">{g.text}</span>
-                  </span>
-                  <span className="text-lg text-[#1d6b4a]" aria-hidden="true">→</span>
-                </Link>
-              ))}
-            </div>
-          </section>}
         </div>
       </main>
       <LandingFooter narrow name={landing?.footer_name || ls.footerName} />

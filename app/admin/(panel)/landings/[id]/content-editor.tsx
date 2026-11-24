@@ -218,7 +218,6 @@ export function ContentEditor({ initial, landingId }: { initial: LandingContent;
             <span className="a-label">Trust badges (small chips, up to 4)</span>
             <ListEditor items={c.quick.trust} onChange={(v) => set("quick", { ...c.quick, trust: v.slice(0, 4) })} addLabel="Add badge" />
           </div>
-          <Text label="Heading above the guide links" value={c.quick.guidesTitle} onChange={(v) => set("quick", { ...c.quick, guidesTitle: v })} />
         </Section>
       )}
 

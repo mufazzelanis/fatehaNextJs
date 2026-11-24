@@ -175,10 +175,6 @@ export function GuidesEditor({ initial, only }: { initial: GuideContent; only?: 
             <h2 className="font-medium text-slate-900">Product & contact <span className="text-xs font-normal text-slate-500">— shared by all pages</span></h2>
             <Text label="Product name" value={c.product} onChange={(v) => up("product", v)} hint="Shown in the header, page titles and the order box." />
             <Lines label="Expert call numbers" value={c.phones} onChange={(v) => up("phones", v)} hint="One number per line (up to 4). Shown as call buttons at the bottom of every guide page. Leave empty to hide." rows={3} />
-            <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm">
-              <input type="checkbox" checked={c.showOnThankYou} onChange={(e) => up("showOnThankYou", e.target.checked)} className="mt-0.5 size-4 accent-brand-700" />
-              <span><b className="font-medium text-slate-900">Show the guides on the order thank-you page</b><br /><span className="text-slate-500">“পণ্য হাতে পাওয়ার আগেই জেনে নিন” cards after a landing-page order.</span></span>
-            </label>
           </section>
           {!only && <section className="a-card space-y-4 p-5">
             <h2 className="font-medium text-slate-900">Pages</h2>

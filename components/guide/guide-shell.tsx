@@ -44,7 +44,6 @@ export async function GuideShell({ current, children }: { current: GuideKey | "r
   // Expert numbers of the guide pages; none set → the business numbers (Admin → Business Info).
   const GUIDE_PHONES = content.phones.length ? content.phones : [biz.phone, biz.phone2].filter(Boolean);
   const here = current === "reviews" ? "/reviews" : GUIDE_HREF[current];
-  const others = GUIDES.filter((g) => g.href !== here);
   return (
     <div className="min-h-screen bg-[#f4f8f5] font-sans text-[#14261c] wrap-break-word">
       <header className="sticky top-0 z-30 border-b border-[#1d6b4a]/10 bg-white/95 backdrop-blur">
@@ -101,35 +100,6 @@ export async function GuideShell({ current, children }: { current: GuideKey | "r
               className="cta-fx flex items-center justify-center gap-2 rounded-2xl bg-[#e11d1d] px-5 py-4 text-[20px] font-bold text-white shadow-[0_8px_20px_-6px_rgb(225_29_29/0.6)] transition hover:-translate-y-0.5">
               অর্ডার করতে ক্লিক করুন <span aria-hidden="true" className="cta-arrow">→</span>
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Other guides */}
-      <section className="px-4 pb-12 pt-2">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-3 font-display text-[20px] font-bold text-[#14261c]">আরও জানুন</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {others.map((g) => (
-              <Link key={g.href} href={g.href}
-                className="group flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#1d6b4a]/10 transition hover:-translate-y-0.5 hover:shadow-md">
-                <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#e8f3ec] text-3xl" aria-hidden="true">{g.icon}</span>
-                <span className="min-w-0">
-                  <span className="block font-display text-[19px] font-bold text-[#1d6b4a] group-hover:underline">{g.label}</span>
-                  <span className="block text-[15px] text-[#4b6356]">{g.text}</span>
-                </span>
-              </Link>
-            ))}
-            {current !== "reviews" && (
-              <Link href="/reviews"
-                className="group flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-amber-200 transition hover:-translate-y-0.5 hover:shadow-md">
-                <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-amber-50 text-3xl" aria-hidden="true">⭐</span>
-                <span className="min-w-0">
-                  <span className="block font-display text-[19px] font-bold text-[#1d6b4a] group-hover:underline">গ্রাহকদের রিভিউ</span>
-                  <span className="block text-[15px] text-[#4b6356]">অন্যদের অভিজ্ঞতা পড়ুন, নিজের অভিজ্ঞতা শেয়ার করুন</span>
-                </span>
-              </Link>
-            )}
           </div>
         </div>
       </section>
